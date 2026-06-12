@@ -894,6 +894,9 @@ export function GameApp() {
                               role="option"
                               aria-selected="false"
                               className={styles.countryButton}
+                              onPointerDown={(event) => {
+                                event.preventDefault();
+                              }}
                               onClick={() => void handleGuess(country.id)}
                               disabled={isBusy}
                             >

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { createCatalogCountries } from "../src/data/country-catalog";
 import { InMemoryRepository } from "../src/repositories/in-memory-repository";
+import { DishImageEnricher } from "../src/services/dish-image-enricher";
 import { ImportService } from "../src/services/import-service";
 
 function mockJsonResponse(payload: unknown) {
@@ -17,84 +18,91 @@ describe("ImportService live match pool", () => {
     await repository.syncCountries(createCatalogCountries());
 
     let calls = 0;
-    const service = new ImportService(
-      repository,
-      "https://example.test/api",
-      (async () => {
-        calls += 1;
+    const fetcher = (async () => {
+      calls += 1;
 
-        if (calls === 1) {
-          return mockJsonResponse({
-            meals: [
-              {
-                idMeal: "1",
-                strMeal: "Carbonara",
-                strArea: "Italian",
-                strInstructions: "Cook it",
-                strMealThumb: "https://cdn.test/1.jpg",
-                strIngredient1: "Pasta",
-                strMeasure1: "200g"
-              }
-            ]
-          });
-        }
-
-        if (calls === 2) {
-          return mockJsonResponse({
-            meals: [
-              {
-                idMeal: "1",
-                strMeal: "Carbonara",
-                strArea: "Italian",
-                strInstructions: "Cook it",
-                strMealThumb: "https://cdn.test/1.jpg"
-              }
-            ]
-          });
-        }
-
-        if (calls === 3) {
-          return mockJsonResponse({
-            meals: [
-              {
-                idMeal: "2",
-                strMeal: "Mystery",
-                strArea: "Unknown",
-                strInstructions: "Cook it",
-                strMealThumb: "https://cdn.test/2.jpg"
-              }
-            ]
-          });
-        }
-
-        if (calls === 4) {
-          return mockJsonResponse({
-            meals: [
-              {
-                idMeal: "3",
-                strMeal: "No Image",
-                strArea: "Mexican",
-                strInstructions: "Cook it",
-                strMealThumb: ""
-              }
-            ]
-          });
-        }
-
+      if (calls === 1) {
         return mockJsonResponse({
           meals: [
             {
-              idMeal: "4",
-              strMeal: "Tacos",
-              strArea: "Mexican",
+              idMeal: "1",
+              strMeal: "Carbonara",
+              strArea: "Italian",
               strInstructions: "Cook it",
-              strMealThumb: "https://cdn.test/4.jpg",
-              strIngredient1: "Tortilla",
-              strMeasure1: "4"
+              strMealThumb: "https://cdn.test/1.jpg",
+              strIngredient1: "Pasta",
+              strMeasure1: "200g"
             }
           ]
         });
-      }) as typeof fetch
+      }
+
+      if (calls === 2) {
+        return mockJsonResponse({
+          meals: [
+            {
+              idMeal: "1",
+              strMeal: "Carbonara",
+              strArea: "Italian",
+              strInstructions: "Cook it",
+              strMealThumb: "https://cdn.test/1.jpg"
+            }
+          ]
+        });
+      }
+
+      if (calls === 3) {
+        return mockJsonResponse({
+          meals: [
+            {
+              idMeal: "2",
+              strMeal: "Mystery",
+              strArea: "Unknown",
+              strInstructions: "Cook it",
+              strMealThumb: "https://cdn.test/2.jpg"
+            }
+          ]
+        });
+      }
+
+      if (calls === 4) {
+        return mockJsonResponse({
+          meals: [
+            {
+              idMeal: "3",
+              strMeal: "No Image",
+              strArea: "Mexican",
+              strInstructions: "Cook it",
+              strMealThumb: ""
+            }
+          ]
+        });
+      }
+
+      return mockJsonResponse({
+        meals: [
+          {
+            idMeal: "4",
+            strMeal: "Tacos",
+            strArea: "Mexican",
+            strInstructions: "Cook it",
+            strMealThumb: "https://cdn.test/4.jpg",
+            strIngredient1: "Tortilla",
+            strMeasure1: "4"
+          }
+        ]
+      });
+    }) as typeof fetch;
+    const imageEnricher = new DishImageEnricher(
+      "https://wiki.test/rest",
+      "https://wiki.test/api.php",
+      (async () => mockJsonResponse({ pages: [] })) as typeof fetch
+    );
+    const service = new ImportService(
+      repository,
+      "https://example.test/api",
+      imageEnricher,
+      fetcher
     );
 
     const imported = await service.importRandomMatchMeals({
@@ -105,5 +113,6 @@ describe("ImportService live match pool", () => {
 
     expect(imported.map((meal) => meal.mealDbId)).toEqual(["1", "4"]);
     expect(imported.every((meal) => meal.imageUrl)).toBe(true);
+    expect(imported.every((meal) => Array.isArray(meal.imageGallery))).toBe(true);
   });
 });

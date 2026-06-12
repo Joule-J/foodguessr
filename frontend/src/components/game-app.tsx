@@ -32,16 +32,16 @@ const historySlotCount = 5;
 const foodImageFallback = "/food-placeholder.svg";
 const landingPlates = [
   {
-    imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
-    title: "Street Food"
+    imageUrl: "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=1200&q=80",
+    title: "Dessert Table"
   },
   {
-    imageUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80",
-    title: "Shared Table"
+    imageUrl: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=1200&q=80",
+    title: "Pastry Plate"
   },
   {
-    imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
-    title: "Regional Dish"
+    imageUrl: "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=1200&q=80",
+    title: "Sweet Treats"
   }
 ] as const;
 
@@ -104,8 +104,10 @@ export function GameApp() {
   const [playerName, setPlayerName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [landingIndex, setLandingIndex] = useState(0);
+  const [isJoinExpanded, setIsJoinExpanded] = useState(false);
   const [isCountryMenuOpen, setIsCountryMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [selectedImageIndexes, setSelectedImageIndexes] = useState<Record<string, number>>({});
   const chatScrollerRef = useRef<HTMLDivElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -258,6 +260,23 @@ export function GameApp() {
   );
   const session = room?.session ?? null;
   const currentRound = session?.currentRound ?? null;
+  const wrongGuessCount = useMemo(
+    () => currentRound?.guesses.filter((guess) => !guess.isCorrect).length ?? 0,
+    [currentRound]
+  );
+  const roundImageUrls = useMemo(() => {
+    if (!currentRound) {
+      return [];
+    }
+
+    return [currentRound.dish.imageUrl, ...(currentRound.dish.imageGallery ?? [])].filter(
+      (url, index, urls) => Boolean(url) && urls.indexOf(url) === index
+    );
+  }, [currentRound]);
+  const selectedRoundImageIndex = currentRound
+    ? Math.min(selectedImageIndexes[currentRound.id] ?? 0, Math.max(roundImageUrls.length - 1, 0))
+    : 0;
+  const activeRoundImageUrl = roundImageUrls[selectedRoundImageIndex] ?? currentRound?.dish.imageUrl;
   const canGuess =
     Boolean(
       room &&
@@ -269,6 +288,23 @@ export function GameApp() {
   const historySlots = useMemo(() => {
     const guesses = [...(currentRound?.guesses ?? [])].reverse();
     return Array.from({ length: historySlotCount }, (_, index) => guesses[index] ?? null);
+  }, [currentRound]);
+
+  useEffect(() => {
+    if (!currentRound) {
+      return;
+    }
+
+    setSelectedImageIndexes((current) => {
+      if (current[currentRound.id] !== undefined) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [currentRound.id]: 0
+      };
+    });
   }, [currentRound]);
 
   async function handleCreateRoom() {
@@ -288,6 +324,7 @@ export function GameApp() {
       setRoom(launch);
       setQuery("");
       setJoinCode("");
+      setIsJoinExpanded(false);
       setIsCountryMenuOpen(false);
     } catch (startError) {
       setError(startError instanceof Error ? startError.message : "Failed to create room.");
@@ -318,6 +355,7 @@ export function GameApp() {
       const launch = await joinRoom(normalizedCode, trimmedName);
       setRoom(launch);
       setQuery("");
+      setIsJoinExpanded(false);
       setIsCountryMenuOpen(false);
     } catch (joinError) {
       setError(joinError instanceof Error ? joinError.message : "Failed to join room.");
@@ -410,8 +448,10 @@ export function GameApp() {
     setLastResult(null);
     setError(null);
     setChatDraft("");
+    setIsJoinExpanded(false);
     setIsCountryMenuOpen(false);
     setIsEmojiPickerOpen(false);
+    setSelectedImageIndexes({});
   }
 
   return (
@@ -483,46 +523,60 @@ export function GameApp() {
                 <h1 className={styles.landingTitle}>Begùme</h1>
                 <h2>Create a room or join one with a code.</h2>
               </div>
-              <input
-                className={styles.roomCodeInput}
-                value={playerName}
-                onChange={(event) => setPlayerName(event.target.value)}
-                placeholder="YOUR NAME"
-                maxLength={24}
-              />
-              <button
-                className={styles.primaryButton}
-                onClick={handleCreateRoom}
-                disabled={isBusy}
-              >
-                {isBusy ? "Creating room..." : "Create Room"}
-              </button>
-              <div className={styles.landingDivider}>
-                <span />
-                <p>or</p>
-                <span />
-              </div>
-              <div className={styles.joinStack}>
+              <div className={styles.identityBlock}>
+                <span className={styles.inputSectionLabel}>Your name</span>
                 <input
                   className={styles.roomCodeInput}
-                  value={joinCode}
-                  onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void handleJoinRoom();
-                    }
-                  }}
-                  placeholder="ROOM CODE"
-                  maxLength={6}
+                  value={playerName}
+                  onChange={(event) => setPlayerName(event.target.value)}
+                  placeholder="YOUR NAME"
+                  maxLength={24}
                 />
+              </div>
+              <div className={styles.landingActionRow}>
                 <button
-                  className={styles.secondaryButton}
-                  onClick={handleJoinRoom}
+                  className={styles.primaryButton}
+                  onClick={handleCreateRoom}
                   disabled={isBusy}
                 >
-                  {isBusy ? "Joining room..." : "Join Room"}
+                  {isBusy ? "Creating room..." : "Create Room"}
                 </button>
+                <button
+                  className={styles.secondaryButton}
+                  onClick={() => {
+                    if (isJoinExpanded) {
+                      void handleJoinRoom();
+                      return;
+                    }
+
+                    setIsJoinExpanded(true);
+                  }}
+                  disabled={isBusy}
+                >
+                  {isBusy ? "Joining room..." : isJoinExpanded ? "Join with Code" : "Join Room"}
+                </button>
+              </div>
+              <div
+                className={`${styles.joinRevealPanel} ${
+                  isJoinExpanded ? styles.joinRevealPanelOpen : ""
+                }`}
+              >
+                <div className={styles.joinStack}>
+                  <span className={styles.inputSectionLabel}>Room code</span>
+                  <input
+                    className={styles.roomCodeInput}
+                    value={joinCode}
+                    onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void handleJoinRoom();
+                      }
+                    }}
+                    placeholder="ROOM CODE"
+                    maxLength={6}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -617,8 +671,45 @@ export function GameApp() {
               ) : currentRound ? (
                 <>
                   <div className={styles.imageWrap}>
+                    {wrongGuessCount >= 2 ? (
+                      <div className={styles.dishTitleHint}>
+                        <span>Dish</span>
+                        <strong>{currentRound.dish.title}</strong>
+                      </div>
+                    ) : null}
+                    {roundImageUrls.length > 1 ? (
+                      <div className={styles.imageGalleryRail}>
+                        {roundImageUrls.map((imageUrl, index) => (
+                          <button
+                            key={`${currentRound.id}-${imageUrl}`}
+                            type="button"
+                            className={
+                              index === selectedRoundImageIndex
+                                ? styles.imageThumbButtonActive
+                                : styles.imageThumbButton
+                            }
+                            onClick={() =>
+                              setSelectedImageIndexes((current) => ({
+                                ...current,
+                                [currentRound.id]: index
+                              }))
+                            }
+                            aria-label={`Show photo ${index + 1}`}
+                          >
+                            <img
+                              src={imageUrl}
+                              alt={`${currentRound.dish.title} photo ${index + 1}`}
+                              onError={(event) => {
+                                event.currentTarget.onerror = null;
+                                event.currentTarget.src = foodImageFallback;
+                              }}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                     <img
-                      src={currentRound.dish.imageUrl}
+                      src={activeRoundImageUrl}
                       alt={currentRound.dish.title}
                       className={styles.image}
                       onError={(event) => {

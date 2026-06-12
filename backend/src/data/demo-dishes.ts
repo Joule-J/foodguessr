@@ -5,6 +5,7 @@ export const demoMeals = [
     areaRaw: "Italian",
     imageUrl:
       "https://www.themealdb.com/images/media/meals/llcbn01574260722.jpg",
+    imageGallery: [],
     instructions:
       "Cook the pasta, fry the pancetta, whisk eggs with grated cheese, then toss everything together off the heat.",
     ingredients: ["Spaghetti", "Pancetta", "Eggs", "Parmesan", "Black Pepper"]
@@ -15,6 +16,7 @@ export const demoMeals = [
     areaRaw: "Thai",
     imageUrl:
       "https://www.themealdb.com/images/media/meals/uuuspp1511297945.jpg",
+    imageGallery: [],
     instructions:
       "Soak rice noodles, stir-fry tofu and aromatics, then toss with tamarind sauce, noodles, peanuts, and lime.",
     ingredients: ["Rice Noodles", "Tamarind", "Tofu", "Bean Sprouts", "Peanuts"]
@@ -25,6 +27,7 @@ export const demoMeals = [
     areaRaw: "Mexican",
     imageUrl:
       "https://www.themealdb.com/images/media/meals/uvuyxu1503067369.jpg",
+    imageGallery: [],
     instructions:
       "Marinate pork with spices and pineapple, grill until charred, then serve in tortillas with onion and cilantro.",
     ingredients: ["Pork", "Pineapple", "Corn Tortillas", "Onion", "Cilantro"]
@@ -35,6 +38,7 @@ export const demoMeals = [
     areaRaw: "Indian",
     imageUrl:
       "https://www.themealdb.com/images/media/meals/sywrsu1511463066.jpg",
+    imageGallery: [],
     instructions:
       "Roast marinated chicken, simmer in a butter tomato sauce with spices, then finish with cream.",
     ingredients: ["Chicken", "Tomatoes", "Butter", "Cream", "Garam Masala"]
@@ -45,6 +49,7 @@ export const demoMeals = [
     areaRaw: "Canadian",
     imageUrl:
       "https://www.themealdb.com/images/media/meals/uuyrrx1487327597.jpg",
+    imageGallery: [],
     instructions:
       "Fry potatoes, top with cheese curds, then pour hot gravy over the fries just before serving.",
     ingredients: ["Potatoes", "Cheese Curds", "Gravy", "Pepper", "Salt"]

@@ -53,6 +53,11 @@ export class InMemoryRepository implements GameRepository {
     return this.countries.get(countryId) ?? null;
   }
 
+  async getDishByMealDbId(mealDbId: string) {
+    const dish = Array.from(this.dishes.values()).find((item) => item.mealDbId === mealDbId);
+    return dish ? this.inflateDish(dish) : null;
+  }
+
   async upsertDishes(dishes: DishSeed[]) {
     for (const dish of dishes) {
       const existing = Array.from(this.dishes.values()).find(

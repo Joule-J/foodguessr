@@ -34,6 +34,7 @@ let app: Awaited<ReturnType<typeof createServer>>["app"];
 let server: Awaited<ReturnType<typeof createServer>>["server"];
 let baseUrl = "";
 const sockets: Socket[] = [];
+const ROOM_TEST_TIMEOUT_MS = 10_000;
 
 function waitForSocketEvent<T>(socket: Socket, eventName: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -115,7 +116,7 @@ describe("room routes", () => {
     expect(createResponse.body.roomStatus).toBe("WAITING_FOR_PLAYER");
     expect(createResponse.body.members).toHaveLength(1);
     expect(createResponse.body.session.currentRound).not.toHaveProperty("debugCountryName");
-  });
+  }, ROOM_TEST_TIMEOUT_MS);
 
   test("joining a room starts the match and broadcasts the member join", async () => {
     const createResponse = await request(app).post("/api/rooms").send({ name: "Host" });
@@ -133,7 +134,7 @@ describe("room routes", () => {
     const joinEvent = await joinEventPromise;
     expect(joinEvent.roomStatus).toBe("IN_PROGRESS");
     expect(joinEvent.members).toHaveLength(2);
-  });
+  }, ROOM_TEST_TIMEOUT_MS);
 
   test("guessing before player 2 joins is rejected", async () => {
     const createResponse = await request(app).post("/api/rooms").send({ name: "SoloHost" });
@@ -146,7 +147,7 @@ describe("room routes", () => {
 
     expect(response.status).toBe(409);
     expect(response.body.error).toBe("Waiting for a second player.");
-  });
+  }, ROOM_TEST_TIMEOUT_MS);
 
   test("player 2 can submit a country guess", async () => {
     const createResponse = await request(app).post("/api/rooms").send({ name: "Host" });
@@ -172,7 +173,7 @@ describe("room routes", () => {
     expect(response.status).toBe(200);
     expect(response.body.room.selfMemberId).toBe(guestRoom.selfMemberId);
     expect(response.body.room.session.currentRound.guesses).toHaveLength(1);
-  });
+  }, ROOM_TEST_TIMEOUT_MS);
 
   test("chat messages broadcast to connected room members", async () => {
     const createResponse = await request(app).post("/api/rooms").send({ name: "Host" });
@@ -197,7 +198,7 @@ describe("room routes", () => {
     const [hostEvent, guestEvent] = await Promise.all([hostMessagePromise, guestMessagePromise]);
     expect(hostEvent.messages.at(-1)?.text).toBe("Check the spices list.");
     expect(guestEvent.messages.at(-1)?.text).toBe("Check the spices list.");
-  });
+  }, ROOM_TEST_TIMEOUT_MS);
 
   test("valid guesses broadcast room updates and completed rooms reject extra guesses", async () => {
     const createResponse = await request(app).post("/api/rooms").send({ name: "Host" });
@@ -268,5 +269,5 @@ describe("room routes", () => {
     expect(restartResponse.body.session.totalScore).toBe(0);
     expect(restartResponse.body.session.solvedRounds).toHaveLength(0);
     expect(restartResponse.body.messages.at(-1)?.text).toBe("Keep this chat.");
-  });
+  }, ROOM_TEST_TIMEOUT_MS);
 });

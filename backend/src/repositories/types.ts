@@ -39,6 +39,7 @@ export interface GameRepository {
   syncCountries(countries: CountrySeed[]): Promise<void>;
   listCountries(): Promise<CountryRecord[]>;
   getCountryById(countryId: string): Promise<CountryRecord | null>;
+  getDishByMealDbId(mealDbId: string): Promise<DishRecord | null>;
   upsertDishes(dishes: DishSeed[]): Promise<void>;
   listDishes(): Promise<DishRecord[]>;
   listPlayableDishes(): Promise<DishRecord[]>;

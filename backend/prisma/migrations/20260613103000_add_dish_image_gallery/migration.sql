@@ -1,0 +1,2 @@
+ALTER TABLE "public"."Dish"
+ADD COLUMN "imageGallery" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

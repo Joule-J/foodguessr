@@ -9,6 +9,7 @@ import { getConfig } from "./config";
 import { createCatalogCountries } from "./data/country-catalog";
 import { HttpError } from "./lib/errors";
 import { createGameRepository } from "./repositories";
+import { DishImageEnricher } from "./services/dish-image-enricher";
 import { countryFlagUrl } from "./services/flags";
 import { GameService } from "./services/game-service";
 import { ImportService } from "./services/import-service";
@@ -46,7 +47,17 @@ export async function createServer(input?: {
   const repository = createGameRepository({
     databaseUrl: config.databaseUrl
   });
-  const importService = new ImportService(repository, config.mealDbBaseUrl, input?.fetcher);
+  const imageEnricher = new DishImageEnricher(
+    config.wikipediaRestBaseUrl,
+    config.wikipediaActionApiUrl,
+    input?.fetcher
+  );
+  const importService = new ImportService(
+    repository,
+    config.mealDbBaseUrl,
+    imageEnricher,
+    input?.fetcher
+  );
   const roomService = new RoomService();
   const gameService = new GameService(
     repository,
@@ -401,6 +412,7 @@ export async function createServer(input?: {
           title: dish.title,
           areaRaw: dish.areaRaw,
           imageUrl: dish.imageUrl,
+          imageGallery: dish.imageGallery,
           isPlayable: dish.isPlayable,
           needsReview: dish.needsReview,
           country: {

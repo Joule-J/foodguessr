@@ -12,18 +12,18 @@
   align-items: center;
   gap: 12px;
   max-width: 1720px;
-  min-height: 38px;
-  margin: 0 auto 3px;
-  padding: 0 2px 3px;
+  min-height: 48px;
+  margin: 0 auto 4px;
+  padding: 2px 4px 4px;
   border-bottom: 1px solid rgba(17, 35, 24, 0.08);
 }
 
 .kicker {
   margin: 0;
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 1.45rem;
+  font-weight: 800;
   letter-spacing: -0.02em;
-  color: #173626;
+  color: #112318;
 }
 
 .headerSide {
@@ -146,14 +146,16 @@
 }
 
 .landingIntro h2 {
-  font-size: clamp(2rem, 2.8vw, 3rem);
-  line-height: 0.94;
+  max-width: 12ch;
+  font-size: clamp(1.2rem, 1.9vw, 1.8rem);
+  line-height: 0.98;
+  color: #53685d;
 }
 
 .landingTitle {
-  margin: 2px 0 2px;
-  font-size: clamp(3rem, 6vw, 5.4rem);
-  line-height: 0.88;
+  margin: 4px 0 6px;
+  font-size: clamp(4.4rem, 8vw, 7.2rem);
+  line-height: 0.82;
   color: #112318;
 }
 
@@ -165,28 +167,45 @@
   color: #6a7a6f;
 }
 
-.landingDivider {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 10px;
-  align-items: center;
-}
-
-.landingDivider span {
-  height: 1px;
-  background: rgba(17, 35, 24, 0.1);
-}
-
-.landingDivider p {
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #6a7a6f;
-}
-
+.identityBlock,
 .joinStack {
   display: grid;
+  gap: 10px;
+}
+
+.landingActionRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
+  align-items: stretch;
+}
+
+.joinRevealPanel {
+  display: grid;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-8px);
+  transition:
+    max-height 260ms ease,
+    opacity 220ms ease,
+    transform 260ms ease,
+    margin-top 260ms ease;
+}
+
+.joinRevealPanelOpen {
+  max-height: 120px;
+  margin-top: 8px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.inputSectionLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #708276;
 }
 
 .roomCodeInput {
@@ -209,6 +228,7 @@
 
 .secondaryButton {
   height: 50px;
+  padding: 0 16px;
   border: 1px solid rgba(17, 35, 24, 0.12);
   border-radius: 18px;
   background: #eef3ea;
@@ -216,6 +236,18 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.landingActionRow .primaryButton,
+.landingActionRow .secondaryButton {
+  display: inline-flex;
+  width: 100%;
+  height: 56px;
+  margin-top: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  white-space: nowrap;
 }
 
 .secondaryButton:hover,
@@ -229,6 +261,12 @@
 .countryButton:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+@media (max-width: 760px) {
+  .landingActionRow {
+    grid-template-columns: 1fr;
+  }
 }
 
 .landingDots {
@@ -320,9 +358,82 @@
 }
 
 .imageWrap {
+  position: relative;
   overflow: hidden;
   border-radius: 22px;
   min-height: 0;
+}
+
+.imageGalleryRail {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  bottom: 14px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 70px;
+  pointer-events: none;
+}
+
+.imageThumbButton,
+.imageThumbButtonActive {
+  width: 70px;
+  height: 70px;
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 252, 244, 0.88);
+  box-shadow: 0 12px 28px rgba(17, 35, 24, 0.16);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.imageThumbButton {
+  border: 1px solid rgba(255, 253, 247, 0.54);
+  opacity: 0.82;
+}
+
+.imageThumbButtonActive {
+  border: 2px solid rgba(255, 213, 106, 0.92);
+  opacity: 1;
+}
+
+.imageThumbButton img,
+.imageThumbButtonActive img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dishTitleHint {
+  position: absolute;
+  top: 14px;
+  left: 96px;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 253, 247, 0.18);
+  border-radius: 14px;
+  background: rgba(12, 25, 17, 0.62);
+  color: #fffdf7;
+  backdrop-filter: blur(10px);
+}
+
+.dishTitleHint span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.76;
+}
+
+.dishTitleHint strong {
+  font-size: 1rem;
+  line-height: 1.05;
 }
 
 .roundReveal {

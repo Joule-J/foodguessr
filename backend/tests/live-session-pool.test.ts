@@ -25,26 +25,30 @@ describe("live API match pool", () => {
     const fetcher = (async (input: string | URL | Request) => {
       const url = String(input);
 
-      if (!url.endsWith("/random.php")) {
-        throw new Error(`Unexpected URL: ${url}`);
+      if (url.endsWith("/random.php")) {
+        const [idMeal, strArea, strMeal] = meals[index % meals.length]!;
+        index += 1;
+
+        return mockJsonResponse({
+          meals: [
+            {
+              idMeal,
+              strMeal,
+              strArea,
+              strInstructions: `Cook ${strMeal}`,
+              strMealThumb: `https://cdn.test/${idMeal}.jpg`,
+              strIngredient1: "Ingredient",
+              strMeasure1: "1"
+            }
+          ]
+        });
       }
 
-      const [idMeal, strArea, strMeal] = meals[index % meals.length]!;
-      index += 1;
+      if (url.includes("/search/title")) {
+        return mockJsonResponse({ pages: [] });
+      }
 
-      return mockJsonResponse({
-        meals: [
-          {
-            idMeal,
-            strMeal,
-            strArea,
-            strInstructions: `Cook ${strMeal}`,
-            strMealThumb: `https://cdn.test/${idMeal}.jpg`,
-            strIngredient1: "Ingredient",
-            strMeasure1: "1"
-          }
-        ]
-      });
+      throw new Error(`Unexpected URL: ${url}`);
     }) as typeof fetch;
 
     const { app } = await createServer({
@@ -64,21 +68,33 @@ describe("live API match pool", () => {
       ["Carbonara", "Tacos", "Pad Thai", "Butter Chicken", "Poutine", "Sushi"]
     ).toContain(createResponse.body.currentRound.dish.title);
     expect(createResponse.body.currentRound.dish.imageUrl).toContain("https://cdn.test/");
+    expect(Array.isArray(createResponse.body.currentRound.dish.imageGallery)).toBe(true);
   });
 
   test("falls back when live API cannot provide enough valid meals", async () => {
-    const fetcher = (async () =>
-      mockJsonResponse({
-        meals: [
-          {
-            idMeal: "900",
-            strMeal: "Unknown Meal",
-            strArea: "Unknown",
-            strInstructions: "Cook it",
-            strMealThumb: ""
-          }
-        ]
-      })) as typeof fetch;
+    const fetcher = (async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.endsWith("/random.php")) {
+        return mockJsonResponse({
+          meals: [
+            {
+              idMeal: "900",
+              strMeal: "Unknown Meal",
+              strArea: "Unknown",
+              strInstructions: "Cook it",
+              strMealThumb: ""
+            }
+          ]
+        });
+      }
+
+      if (url.includes("/search/title")) {
+        return mockJsonResponse({ pages: [] });
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    }) as typeof fetch;
 
     const { app } = await createServer({
       fetcher,

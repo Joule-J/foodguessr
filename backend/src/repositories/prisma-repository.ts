@@ -77,6 +77,17 @@ export class PrismaRepository implements GameRepository {
     return country ? mapCountry(country) : null;
   }
 
+  async getDishByMealDbId(mealDbId: string) {
+    const dish = await this.prisma.dish.findUnique({
+      where: { mealDbId },
+      include: {
+        country: true
+      }
+    });
+
+    return dish ? mapDish(dish) : null;
+  }
+
   async upsertDishes(dishes: DishSeed[]) {
     for (const dish of dishes) {
       await this.prisma.dish.upsert({
@@ -85,6 +96,7 @@ export class PrismaRepository implements GameRepository {
           title: dish.title,
           areaRaw: dish.areaRaw,
           imageUrl: dish.imageUrl,
+          imageGallery: dish.imageGallery,
           instructions: dish.instructions,
           ingredients: dish.ingredients,
           isPlayable: dish.isPlayable,
@@ -262,6 +274,7 @@ function mapDish(dish: {
   title: string;
   areaRaw: string;
   imageUrl: string;
+  imageGallery: string[];
   instructions: string;
   ingredients: unknown;
   isPlayable: boolean;
@@ -283,6 +296,7 @@ function mapDish(dish: {
     title: dish.title,
     areaRaw: dish.areaRaw,
     imageUrl: dish.imageUrl,
+    imageGallery: Array.isArray(dish.imageGallery) ? dish.imageGallery.map(String) : [],
     instructions: dish.instructions,
     ingredients: Array.isArray(dish.ingredients) ? dish.ingredients.map(String) : [],
     isPlayable: dish.isPlayable,

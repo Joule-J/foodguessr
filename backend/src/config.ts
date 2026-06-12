@@ -4,6 +4,8 @@ export type AppConfig = {
   frontendUrl: string;
   frontendUrls: string[];
   mealDbBaseUrl: string;
+  wikipediaRestBaseUrl: string;
+  wikipediaActionApiUrl: string;
   databaseUrl?: string;
   liveMealDbSessionImportEnabled: boolean;
 };
@@ -23,6 +25,12 @@ export function getConfig(): AppConfig {
     mealDbBaseUrl:
       process.env.THEMEALDB_BASE_URL ??
       "https://www.themealdb.com/api/json/v1/1",
+    wikipediaRestBaseUrl:
+      process.env.WIKIPEDIA_REST_BASE_URL ??
+      "https://en.wikipedia.org/api/rest_v1",
+    wikipediaActionApiUrl:
+      process.env.WIKIPEDIA_ACTION_API_URL ??
+      "https://en.wikipedia.org/w/api.php",
     databaseUrl: process.env.DATABASE_URL || undefined,
     liveMealDbSessionImportEnabled:
       process.env.LIVE_MEALDB_SESSION_IMPORT !== "false"

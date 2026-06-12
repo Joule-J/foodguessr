@@ -30,6 +30,7 @@ export type SessionView = {
       id: string;
       title: string;
       imageUrl: string;
+      imageGallery?: string[];
       instructions: string;
       ingredients: string[];
     };

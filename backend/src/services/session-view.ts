@@ -41,6 +41,7 @@ function currentRoundView(round: RoundRecord) {
       id: round.dish.id,
       title: round.dish.title,
       imageUrl: round.dish.imageUrl,
+      imageGallery: round.dish.imageGallery,
       instructions: round.dish.instructions,
       ingredients: round.dish.ingredients
     }

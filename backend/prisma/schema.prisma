@@ -39,6 +39,7 @@ model Dish {
   title         String
   areaRaw       String
   imageUrl      String
+  imageGallery  String[] @default([])
   instructions  String
   ingredients   Json
   isPlayable    Boolean  @default(true)

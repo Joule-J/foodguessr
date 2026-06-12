@@ -1,6 +1,7 @@
 import { countryToAreaMap } from "../data/area-map";
 import type { CountryRecord, DishSeed } from "../domain";
 import type { GameRepository } from "../repositories/types";
+import { DishImageEnricher } from "./dish-image-enricher";
 import { normalizeAreaToCountry } from "./normalization";
 
 type MealDbMeal = {
@@ -61,11 +62,13 @@ export class ImportService {
   constructor(
     private readonly repository: GameRepository,
     private readonly mealDbBaseUrl: string,
+    private readonly imageEnricher: DishImageEnricher,
     private readonly fetcher: typeof fetch = fetch
   ) {}
 
   async importThemealdb() {
     const countries = await this.repository.listCountries();
+    const existingDishes = await this.listExistingDishesByMealDbId();
     const imported: DishSeed[] = [];
     const quarantined: Array<{ mealDbId: string; title: string; areaRaw: string }> = [];
 
@@ -74,7 +77,11 @@ export class ImportService {
       const payload = (await response.json()) as MealDbLetterResponse;
 
       for (const meal of payload.meals ?? []) {
-        const normalizedSeed = this.normalizeMealToDishSeed(meal, countries);
+        const normalizedSeed = await this.normalizeMealToDishSeed(
+          meal,
+          countries,
+          existingDishes
+        );
 
         if (!normalizedSeed) {
           quarantined.push({
@@ -106,6 +113,7 @@ export class ImportService {
 
     const response = await this.fetcher(`${this.mealDbBaseUrl}/filter.php?a=${encodeURIComponent(area)}`);
     const payload = (await response.json()) as MealDbAreaResponse;
+    const existingDishes = await this.listExistingDishesByMealDbId();
     const imported: DishSeed[] = [];
 
     for (const summary of payload.meals ?? []) {
@@ -123,17 +131,7 @@ export class ImportService {
         continue;
       }
 
-      imported.push({
-        mealDbId: meal.idMeal,
-        title: meal.strMeal,
-        areaRaw: meal.strArea,
-        imageUrl: meal.strMealThumb,
-        instructions: meal.strInstructions,
-        ingredients: extractIngredients(meal),
-        isPlayable: true,
-        needsReview: false,
-        countryId: country.id
-      });
+      imported.push(await this.createDishSeed(meal, country.id, existingDishes.get(meal.idMeal)));
     }
 
     if (imported.length > 0) {
@@ -148,6 +146,7 @@ export class ImportService {
 
   async importRandomMatchMeals(input: RandomMatchImportInput) {
     const countries = await this.repository.listCountries();
+    const existingDishes = await this.listExistingDishesByMealDbId();
     const selected = new Map<string, DishSeed>();
     let attempts = 0;
 
@@ -168,7 +167,7 @@ export class ImportService {
           continue;
         }
 
-        const seed = this.normalizeMealToDishSeed(meal, countries);
+        const seed = await this.normalizeMealToDishSeed(meal, countries, existingDishes);
 
         if (!seed) {
           continue;
@@ -202,10 +201,11 @@ export class ImportService {
     return payload.meals?.[0] ?? null;
   }
 
-  private normalizeMealToDishSeed(
+  private async normalizeMealToDishSeed(
     meal: MealDbMeal,
-    countries: CountryRecord[]
-  ): DishSeed | null {
+    countries: CountryRecord[],
+    existingDishes: Map<string, DishSeed>
+  ): Promise<DishSeed | null> {
     if (!hasUsableImage(meal)) {
       return null;
     }
@@ -216,16 +216,51 @@ export class ImportService {
       return null;
     }
 
+    return this.createDishSeed(meal, normalizedCountry.id, existingDishes.get(meal.idMeal));
+  }
+
+  private async createDishSeed(
+    meal: MealDbMeal,
+    countryId: string,
+    existingDish?: DishSeed
+  ): Promise<DishSeed> {
+    const imageGallery =
+      existingDish?.imageGallery.length
+        ? existingDish.imageGallery
+        : await this.imageEnricher.resolveImageGallery(meal.strMeal, meal.strMealThumb);
+
     return {
       mealDbId: meal.idMeal,
       title: meal.strMeal,
       areaRaw: meal.strArea,
       imageUrl: meal.strMealThumb,
+      imageGallery,
       instructions: meal.strInstructions,
       ingredients: extractIngredients(meal),
       isPlayable: true,
       needsReview: false,
-      countryId: normalizedCountry.id
+      countryId
     };
+  }
+
+  private async listExistingDishesByMealDbId() {
+    const dishes = await this.repository.listDishes();
+    return new Map(
+      dishes.map((dish) => [
+        dish.mealDbId,
+        {
+          mealDbId: dish.mealDbId,
+          title: dish.title,
+          areaRaw: dish.areaRaw,
+          imageUrl: dish.imageUrl,
+          imageGallery: dish.imageGallery,
+          instructions: dish.instructions,
+          ingredients: dish.ingredients,
+          isPlayable: dish.isPlayable,
+          needsReview: dish.needsReview,
+          countryId: dish.countryId
+        } satisfies DishSeed
+      ])
+    );
   }
 }

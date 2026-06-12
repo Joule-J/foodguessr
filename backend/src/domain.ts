@@ -14,6 +14,7 @@ export type DishRecord = {
   title: string;
   areaRaw: string;
   imageUrl: string;
+  imageGallery: string[];
   instructions: string;
   ingredients: string[];
   isPlayable: boolean;
@@ -62,6 +63,7 @@ export type DishSeed = {
   title: string;
   areaRaw: string;
   imageUrl: string;
+  imageGallery: string[];
   instructions: string;
   ingredients: string[];
   isPlayable: boolean;

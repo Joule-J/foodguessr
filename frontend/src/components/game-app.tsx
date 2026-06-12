@@ -432,7 +432,7 @@ export function GameApp() {
             </button>
           </div>
           <div className={styles.headerCenter}>
-            <p className={styles.kicker}>Food Guessr</p>
+            <p className={styles.kicker}>Begùme</p>
           </div>
           <div className={styles.scoreDock}>
             <div className={styles.scoreCard}>
@@ -480,7 +480,7 @@ export function GameApp() {
             <div className={styles.landingPanel}>
               <div className={styles.landingIntro}>
                 <span className={styles.landingEyebrow}>Realtime Co-op</span>
-                <h1 className={styles.landingTitle}>Food Guessr</h1>
+                <h1 className={styles.landingTitle}>Begùme</h1>
                 <h2>Create a room or join one with a code.</h2>
               </div>
               <input

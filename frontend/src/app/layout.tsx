@@ -13,7 +13,7 @@ const bitter = Bitter({
 });
 
 export const metadata: Metadata = {
-  title: "Food Guessr",
+  title: "Begùme",
   description: "Guess the country behind each dish.",
 };
 

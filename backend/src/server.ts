@@ -14,6 +14,27 @@ import { GameService } from "./services/game-service";
 import { ImportService } from "./services/import-service";
 import { RoomService } from "./services/room-service";
 
+function isAllowedOrigin(origin: string | undefined, allowedOrigins: string[]) {
+  if (!origin) {
+    return true;
+  }
+
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  if (origin === "http://localhost:3000" || origin === "http://127.0.0.1:3000") {
+    return true;
+  }
+
+  try {
+    const url = new URL(origin);
+    return url.hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
 export async function createServer(input?: {
   fetcher?: typeof fetch;
   configOverrides?: Partial<ReturnType<typeof getConfig>>;
@@ -31,6 +52,9 @@ export async function createServer(input?: {
     repository,
     config.liveMealDbSessionImportEnabled ? importService : undefined
   );
+  const allowedOrigins = Array.from(
+    new Set([...config.frontendUrls, config.frontendUrl, "http://localhost:3000"])
+  ).filter(Boolean);
 
   await repository.syncCountries(createCatalogCountries());
   await gameService.bootstrapCatalog();
@@ -38,9 +62,17 @@ export async function createServer(input?: {
   const app = express();
   app.use(
     cors({
-      origin: [config.frontendUrl, "http://localhost:3000"].filter(Boolean)
+      origin(origin, callback) {
+        if (isAllowedOrigin(origin, allowedOrigins)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error(`Origin not allowed: ${origin ?? "unknown"}`));
+      }
     })
   );
+  app.options(/.*/, cors());
   app.use(express.json());
 
   app.get("/health", (_request, response) => {
@@ -427,7 +459,14 @@ export async function createServer(input?: {
   const server = http.createServer(app);
   const io = new SocketServer(server, {
     cors: {
-      origin: [config.frontendUrl, "http://localhost:3000"].filter(Boolean),
+      origin(origin, callback) {
+        if (isAllowedOrigin(origin, allowedOrigins)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error(`Origin not allowed: ${origin ?? "unknown"}`));
+      },
       methods: ["GET", "POST"]
     }
   });

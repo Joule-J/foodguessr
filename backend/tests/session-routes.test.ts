@@ -6,7 +6,12 @@ import { createServer } from "../src/server";
 let app: Awaited<ReturnType<typeof createServer>>["app"];
 
 beforeAll(async () => {
-  const serverBundle = await createServer();
+  const serverBundle = await createServer({
+    configOverrides: {
+      databaseUrl: undefined,
+      liveMealDbSessionImportEnabled: false
+    }
+  });
   app = serverBundle.app;
 });
 

@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum RoundStatus {
+  IN_PROGRESS
+  SOLVED
+}
+
+model Country {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  iso2           String   @unique
+  latitude       Float
+  longitude      Float
+  aliases        Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  dishes         Dish[]
+  targetRounds   Round[]  @relation("RoundTargetCountry")
+  guessedIn      Guess[]
+}
+
+model Dish {
+  id            String   @id @default(cuid())
+  mealDbId      String   @unique
+  title         String
+  areaRaw       String
+  imageUrl      String
+  instructions  String
+  ingredients   Json
+  isPlayable    Boolean  @default(true)
+  needsReview   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  countryId     String
+  country       Country  @relation(fields: [countryId], references: [id])
+  rounds        Round[]
+}
+
+model GameSession {
+  id                String        @id @default(cuid())
+  status            SessionStatus @default(IN_PROGRESS)
+  totalScore        Int           @default(0)
+  currentRoundIndex Int           @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  rounds            Round[]
+  guesses           Guess[]
+}
+
+model Round {
+  id                String      @id @default(cuid())
+  roundIndex        Int
+  status            RoundStatus @default(IN_PROGRESS)
+  totalPenalty      Int         @default(0)
+  roundScore        Int         @default(0)
+  solvedAt          DateTime?
+  revealCountryName String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  sessionId         String
+  dishId            String
+  targetCountryId   String
+  session           GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  dish              Dish        @relation(fields: [dishId], references: [id])
+  targetCountry     Country     @relation("RoundTargetCountry", fields: [targetCountryId], references: [id])
+  guesses           Guess[]
+
+  @@unique([sessionId, roundIndex])
+}
+
+model Guess {
+  id               String      @id @default(cuid())
+  distanceKm       Float
+  penalty          Int
+  isCorrect        Boolean
+  createdAt        DateTime    @default(now())
+  sessionId        String
+  roundId          String
+  guessedCountryId String
+  session          GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  round            Round       @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  guessedCountry   Country     @relation(fields: [guessedCountryId], references: [id])
+}

@@ -1,0 +1,46 @@
+:root {
+  --background: #f7f1df;
+  --foreground: #112318;
+}
+
+html {
+  height: 100%;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: var(--foreground);
+  background:
+    radial-gradient(circle at top left, rgba(255, 202, 130, 0.7), transparent 30%),
+    radial-gradient(circle at top right, rgba(130, 195, 150, 0.65), transparent 28%),
+    linear-gradient(180deg, #fbf6e8 0%, #efe5c8 100%);
+  font-family: var(--font-body), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), serif;
+  letter-spacing: -0.02em;
+}

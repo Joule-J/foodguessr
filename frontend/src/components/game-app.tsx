@@ -107,7 +107,6 @@ export function GameApp() {
   const [isJoinExpanded, setIsJoinExpanded] = useState(false);
   const [isCountryMenuOpen, setIsCountryMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-  const [selectedImageIndexes, setSelectedImageIndexes] = useState<Record<string, number>>({});
   const chatScrollerRef = useRef<HTMLDivElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -264,19 +263,6 @@ export function GameApp() {
     () => currentRound?.guesses.filter((guess) => !guess.isCorrect).length ?? 0,
     [currentRound]
   );
-  const roundImageUrls = useMemo(() => {
-    if (!currentRound) {
-      return [];
-    }
-
-    return [currentRound.dish.imageUrl, ...(currentRound.dish.imageGallery ?? [])].filter(
-      (url, index, urls) => Boolean(url) && urls.indexOf(url) === index
-    );
-  }, [currentRound]);
-  const selectedRoundImageIndex = currentRound
-    ? Math.min(selectedImageIndexes[currentRound.id] ?? 0, Math.max(roundImageUrls.length - 1, 0))
-    : 0;
-  const activeRoundImageUrl = roundImageUrls[selectedRoundImageIndex] ?? currentRound?.dish.imageUrl;
   const canGuess =
     Boolean(
       room &&
@@ -288,23 +274,6 @@ export function GameApp() {
   const historySlots = useMemo(() => {
     const guesses = [...(currentRound?.guesses ?? [])].reverse();
     return Array.from({ length: historySlotCount }, (_, index) => guesses[index] ?? null);
-  }, [currentRound]);
-
-  useEffect(() => {
-    if (!currentRound) {
-      return;
-    }
-
-    setSelectedImageIndexes((current) => {
-      if (current[currentRound.id] !== undefined) {
-        return current;
-      }
-
-      return {
-        ...current,
-        [currentRound.id]: 0
-      };
-    });
   }, [currentRound]);
 
   async function handleCreateRoom() {
@@ -451,7 +420,6 @@ export function GameApp() {
     setIsJoinExpanded(false);
     setIsCountryMenuOpen(false);
     setIsEmojiPickerOpen(false);
-    setSelectedImageIndexes({});
   }
 
   return (
@@ -677,39 +645,8 @@ export function GameApp() {
                         <strong>{currentRound.dish.title}</strong>
                       </div>
                     ) : null}
-                    {roundImageUrls.length > 1 ? (
-                      <div className={styles.imageGalleryRail}>
-                        {roundImageUrls.map((imageUrl, index) => (
-                          <button
-                            key={`${currentRound.id}-${imageUrl}`}
-                            type="button"
-                            className={
-                              index === selectedRoundImageIndex
-                                ? styles.imageThumbButtonActive
-                                : styles.imageThumbButton
-                            }
-                            onClick={() =>
-                              setSelectedImageIndexes((current) => ({
-                                ...current,
-                                [currentRound.id]: index
-                              }))
-                            }
-                            aria-label={`Show photo ${index + 1}`}
-                          >
-                            <img
-                              src={imageUrl}
-                              alt={`${currentRound.dish.title} photo ${index + 1}`}
-                              onError={(event) => {
-                                event.currentTarget.onerror = null;
-                                event.currentTarget.src = foodImageFallback;
-                              }}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
                     <img
-                      src={activeRoundImageUrl}
+                      src={currentRound.dish.imageUrl}
                       alt={currentRound.dish.title}
                       className={styles.image}
                       onError={(event) => {

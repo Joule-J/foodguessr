@@ -6,6 +6,12 @@ type SearchTitleResponse = {
   }>;
 };
 
+type ExactPageMatch = {
+  key: string;
+  title: string;
+  matched_title?: string | null;
+};
+
 type PageSummaryResponse = {
   originalimage?: { source?: string };
   thumbnail?: { source?: string };
@@ -127,7 +133,7 @@ export class DishImageEnricher {
     ).slice(0, MAX_GALLERY_IMAGES);
   }
 
-  private async findExactPage(title: string) {
+  private async findExactPage(title: string): Promise<ExactPageMatch | null> {
     const searchUrl = `${this.restBaseUrl}/search/title?q=${encodeURIComponent(title)}&limit=5`;
     const payload = await this.fetchJson<SearchTitleResponse>(searchUrl);
     const target = normalizeTitle(title);
@@ -143,7 +149,11 @@ export class DishImageEnricher {
       return null;
     }
 
-    return page;
+    return {
+      key: page.key,
+      title: page.title,
+      matched_title: page.matched_title ?? null
+    };
   }
 
   private async fetchImageInfoUrls(fileTitles: string[]) {

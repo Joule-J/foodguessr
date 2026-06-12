@@ -9,7 +9,8 @@
     "start": "node dist/src/index.js",
     "test": "prisma generate && vitest run",
     "prisma:generate": "prisma generate",
-    "seed:countries": "tsx prisma/seed.ts"
+    "seed:countries": "tsx prisma/seed.ts",
+    "seed:borders": "tsx scripts/seed-country-borders.ts"
   },
   "keywords": [
     "express",
@@ -24,6 +25,7 @@
     "@types/node": "^25.9.3",
     "@types/supertest": "^7.2.0",
     "prisma": "^6.16.2",
+    "socket.io-client": "^4.8.3",
     "supertest": "^7.2.2",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",

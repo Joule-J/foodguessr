@@ -24,7 +24,7 @@ export const demoMeals = [
     title: "Tacos al Pastor",
     areaRaw: "Mexican",
     imageUrl:
-      "https://www.themealdb.com/images/media/meals/qtwwss1511385773.jpg",
+      "https://www.themealdb.com/images/media/meals/uvuyxu1503067369.jpg",
     instructions:
       "Marinate pork with spices and pineapple, grill until charred, then serve in tortillas with onion and cilantro.",
     ingredients: ["Pork", "Pineapple", "Corn Tortillas", "Onion", "Cilantro"]

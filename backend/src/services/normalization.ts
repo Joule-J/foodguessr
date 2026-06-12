@@ -16,6 +16,9 @@ export function normalizeAreaToCountry(
 
   return (
     countries.find((country) => normalizeKey(country.name) === normalizeKey(targetName)) ??
+    countries.find((country) =>
+      country.aliases.some((alias) => normalizeKey(alias) === normalizeKey(targetName))
+    ) ??
     null
   );
 }

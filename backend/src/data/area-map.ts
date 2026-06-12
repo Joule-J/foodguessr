@@ -29,3 +29,9 @@ export const areaToCountryMap: Record<string, string> = {
   Uruguayan: "Uruguay",
   Vietnamese: "Vietnam"
 };
+
+export const countryToAreaMap = Object.fromEntries(
+  Object.entries(areaToCountryMap).map(([area, countryName]) => [countryName, area])
+) as Record<string, string>;
+
+export const supportedMealDbCountries = Object.values(areaToCountryMap);

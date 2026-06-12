@@ -1,5 +1,11 @@
 import type { CountryRecord, CountrySeed, DishRecord, DishSeed, SessionRecord } from "../domain";
 
+export type DishUsageStat = {
+  dishId: string;
+  timesUsed: number;
+  lastUsedAt: Date | null;
+};
+
 export type SessionRoundSeed = {
   roundIndex: number;
   dishId: string;
@@ -36,6 +42,8 @@ export interface GameRepository {
   upsertDishes(dishes: DishSeed[]): Promise<void>;
   listDishes(): Promise<DishRecord[]>;
   listPlayableDishes(): Promise<DishRecord[]>;
+  listPlayableDishesByCountry(countryId: string): Promise<DishRecord[]>;
+  listDishUsageStats(): Promise<DishUsageStat[]>;
   updateDish(
     dishId: string,
     patch: { countryId?: string; isPlayable?: boolean; needsReview?: boolean }

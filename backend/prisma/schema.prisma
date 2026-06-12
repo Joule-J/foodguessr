@@ -22,6 +22,7 @@ model Country {
   id             String   @id @default(cuid())
   name           String   @unique
   iso2           String   @unique
+  alpha3         String   @unique
   latitude       Float
   longitude      Float
   aliases        Json

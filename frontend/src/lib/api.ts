@@ -1,4 +1,9 @@
-import type { CountryOption, GuessResponse, SessionView } from "./types";
+import type {
+  CountryOption,
+  RoomGuessResponse,
+  RoomLaunchResponse,
+  SessionView
+} from "./types";
 
 const backendUrl =
   process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
@@ -32,27 +37,90 @@ export async function createSession(): Promise<SessionView> {
   return parseResponse<SessionView>(response);
 }
 
-export async function fetchSession(sessionId: string): Promise<SessionView> {
-  const response = await fetch(`${backendUrl}/api/sessions/${sessionId}`, {
-    cache: "no-store"
+export async function createRoom(name: string): Promise<RoomLaunchResponse> {
+  const response = await fetch(`${backendUrl}/api/rooms`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ name })
   });
 
-  return parseResponse<SessionView>(response);
+  return parseResponse<RoomLaunchResponse>(response);
+}
+
+export async function joinRoom(code: string, name: string): Promise<RoomLaunchResponse> {
+  const response = await fetch(`${backendUrl}/api/rooms/join`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ code, name })
+  });
+
+  return parseResponse<RoomLaunchResponse>(response);
+}
+
+export async function fetchRoomState(
+  code: string,
+  memberId: string
+): Promise<RoomLaunchResponse> {
+  const response = await fetch(
+    `${backendUrl}/api/rooms/${code}?memberId=${encodeURIComponent(memberId)}`,
+    {
+      cache: "no-store"
+    }
+  );
+
+  return parseResponse<RoomLaunchResponse>(response);
+}
+
+export async function sendRoomMessage(
+  code: string,
+  memberId: string,
+  text: string
+): Promise<RoomLaunchResponse> {
+  const response = await fetch(`${backendUrl}/api/rooms/${code}/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ memberId, text })
+  });
+
+  return parseResponse<RoomLaunchResponse>(response);
 }
 
 export async function submitGuess(
-  sessionId: string,
+  roomCode: string,
+  memberId: string,
   countryId: string
-): Promise<GuessResponse> {
-  const response = await fetch(`${backendUrl}/api/sessions/${sessionId}/guesses`, {
+): Promise<RoomGuessResponse> {
+  const response = await fetch(`${backendUrl}/api/rooms/${roomCode}/guesses`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
+      memberId,
       countryId
     })
   });
 
-  return parseResponse<GuessResponse>(response);
+  return parseResponse<RoomGuessResponse>(response);
+}
+
+export async function restartRoom(
+  code: string,
+  memberId: string
+): Promise<RoomLaunchResponse> {
+  const response = await fetch(`${backendUrl}/api/rooms/${code}/restart`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ memberId })
+  });
+
+  return parseResponse<RoomLaunchResponse>(response);
 }

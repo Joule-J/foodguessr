@@ -8,6 +8,7 @@ const countries: CountryRecord[] = [
     id: "it",
     name: "Italy",
     iso2: "IT",
+    alpha3: "ITA",
     latitude: 42.5,
     longitude: 12.5,
     aliases: []
@@ -16,6 +17,7 @@ const countries: CountryRecord[] = [
     id: "us",
     name: "United States",
     iso2: "US",
+    alpha3: "USA",
     latitude: 39,
     longitude: -98,
     aliases: []

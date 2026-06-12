@@ -15,7 +15,6 @@ export type SessionView = {
   currentRound: {
     id: string;
     roundNumber: number;
-    debugCountryName: string;
     guesses: Array<{
       id: string;
       countryId: string;
@@ -23,9 +22,13 @@ export type SessionView = {
       distanceKm: number;
       penalty: number;
       isCorrect: boolean;
+      proximityLabel: string;
+      targetBearing: number;
+      targetDirection: string;
     }>;
     dish: {
       id: string;
+      title: string;
       imageUrl: string;
       instructions: string;
       ingredients: string[];
@@ -34,9 +37,12 @@ export type SessionView = {
   solvedRounds: Array<{
     id: string;
     roundNumber: number;
+    dishTitle: string;
+    dishImageUrl: string;
     countryName: string;
     roundScore: number;
     totalPenalty: number;
+    guessedCorrectly: boolean;
   }>;
 };
 
@@ -44,9 +50,48 @@ export type GuessResponse = {
   session: SessionView;
   guessResult: {
     correct: boolean;
+    roundEnded: boolean;
+    exhausted: boolean;
     distanceKm: number;
     penalty: number;
     scoreDelta: number;
     revealCountry: string | null;
+    dishTitle: string;
+    dishImageUrl: string;
+    proximityLabel: string;
+    targetBearing: number;
+    targetDirection: string;
   };
+};
+
+export type RoomMemberView = {
+  id: string;
+  name: string;
+  slot: "PLAYER_1" | "PLAYER_2";
+};
+
+export type RoomMessageView = {
+  id: string;
+  memberId: string;
+  senderName: string;
+  senderSlot: "PLAYER_1" | "PLAYER_2";
+  text: string;
+  createdAt: string;
+};
+
+export type RoomLaunchResponse = {
+  roomCode: string;
+  roomStatus: "WAITING_FOR_PLAYER" | "IN_PROGRESS" | "COMPLETED";
+  selfMemberId: string;
+  selfSlot: "PLAYER_1" | "PLAYER_2";
+  selfName: string;
+  members: RoomMemberView[];
+  messages: RoomMessageView[];
+  session: SessionView;
+};
+
+export type RoomGuessResponse = {
+  room: RoomLaunchResponse;
+  session: SessionView;
+  guessResult: GuessResponse["guessResult"];
 };

@@ -2,6 +2,7 @@ export type CountryRecord = {
   id: string;
   name: string;
   iso2: string;
+  alpha3: string;
   latitude: number;
   longitude: number;
   aliases: string[];

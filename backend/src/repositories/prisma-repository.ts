@@ -9,6 +9,7 @@ import type {
 } from "../domain";
 import type {
   GameRepository,
+  DishUsageStat,
   GuessCreateInput,
   RoundFinalizeInput,
   SessionProgressUpdate,
@@ -46,11 +47,13 @@ export class PrismaRepository implements GameRepository {
           name: country.name,
           latitude: country.latitude,
           longitude: country.longitude,
+          alpha3: country.alpha3,
           aliases: country.aliases
         },
         create: {
           name: country.name,
           iso2: country.iso2,
+          alpha3: country.alpha3,
           latitude: country.latitude,
           longitude: country.longitude,
           aliases: country.aliases
@@ -114,6 +117,39 @@ export class PrismaRepository implements GameRepository {
       }
     });
     return dishes.map(mapDish);
+  }
+
+  async listPlayableDishesByCountry(countryId: string) {
+    const dishes = await this.prisma.dish.findMany({
+      where: {
+        countryId,
+        isPlayable: true,
+        needsReview: false
+      },
+      include: {
+        country: true
+      }
+    });
+
+    return dishes.map(mapDish);
+  }
+
+  async listDishUsageStats(): Promise<DishUsageStat[]> {
+    const stats = await this.prisma.round.groupBy({
+      by: ["dishId"],
+      _count: {
+        _all: true
+      },
+      _max: {
+        createdAt: true
+      }
+    });
+
+    return stats.map((item) => ({
+      dishId: item.dishId,
+      timesUsed: item._count._all,
+      lastUsedAt: item._max.createdAt
+    }));
   }
 
   async updateDish(
@@ -204,6 +240,7 @@ function mapCountry(country: {
   id: string;
   name: string;
   iso2: string;
+  alpha3: string;
   latitude: number;
   longitude: number;
   aliases: unknown;
@@ -212,6 +249,7 @@ function mapCountry(country: {
     id: country.id,
     name: country.name,
     iso2: country.iso2,
+    alpha3: country.alpha3,
     latitude: country.latitude,
     longitude: country.longitude,
     aliases: Array.isArray(country.aliases) ? country.aliases.map(String) : []
@@ -233,6 +271,7 @@ function mapDish(dish: {
     id: string;
     name: string;
     iso2: string;
+    alpha3: string;
     latitude: number;
     longitude: number;
     aliases: unknown;

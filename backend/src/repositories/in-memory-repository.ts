@@ -11,6 +11,7 @@ import type {
 } from "../domain";
 import type {
   GameRepository,
+  DishUsageStat,
   GuessCreateInput,
   RoundFinalizeInput,
   SessionProgressUpdate,
@@ -20,6 +21,7 @@ import type {
 type InMemoryDish = Omit<DishRecord, "country">;
 type InMemoryGuess = Omit<GuessRecord, "guessedCountry">;
 type InMemoryRound = Omit<RoundRecord, "dish" | "targetCountry" | "guesses"> & {
+  createdAt: Date;
   dishId: string;
   targetCountryId: string;
   guesses: InMemoryGuess[];
@@ -69,6 +71,34 @@ export class InMemoryRepository implements GameRepository {
     return (await this.listDishes()).filter((dish) => dish.isPlayable && !dish.needsReview);
   }
 
+  async listPlayableDishesByCountry(countryId: string) {
+    return (await this.listPlayableDishes()).filter((dish) => dish.countryId === countryId);
+  }
+
+  async listDishUsageStats(): Promise<DishUsageStat[]> {
+    const usageByDish = new Map<string, DishUsageStat>();
+
+    for (const session of this.sessions.values()) {
+      for (const round of session.rounds) {
+        const existing = usageByDish.get(round.dishId) ?? {
+          dishId: round.dishId,
+          timesUsed: 0,
+          lastUsedAt: null
+        };
+
+        existing.timesUsed += 1;
+
+        if (!existing.lastUsedAt || round.createdAt > existing.lastUsedAt) {
+          existing.lastUsedAt = round.createdAt;
+        }
+
+        usageByDish.set(round.dishId, existing);
+      }
+    }
+
+    return Array.from(usageByDish.values());
+  }
+
   async updateDish(
     dishId: string,
     patch: { countryId?: string; isPlayable?: boolean; needsReview?: boolean }
@@ -96,6 +126,7 @@ export class InMemoryRepository implements GameRepository {
         status: "IN_PROGRESS",
         totalPenalty: 0,
         roundScore: 0,
+        createdAt: new Date(),
         dishId: round.dishId,
         targetCountryId: round.targetCountryId,
         guesses: []

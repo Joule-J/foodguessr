@@ -13,6 +13,14 @@ function uniqueAliases(values: string[]): string[] {
   );
 }
 
+function extraAliases(countryName: string): string[] {
+  if (countryName === "Türkiye") {
+    return ["Turkey"];
+  }
+
+  return [];
+}
+
 export function createCatalogCountries(): CountrySeed[] {
   return worldCountries
     .filter((country) => country.independent && country.cca2 && country.latlng.length >= 2)
@@ -24,11 +32,13 @@ export function createCatalogCountries(): CountrySeed[] {
       return {
         name: country.name.common,
         iso2: country.cca2,
+        alpha3: country.cca3,
         latitude: country.latlng[0],
         longitude: country.latlng[1],
         aliases: uniqueAliases([
           country.name.common,
           country.name.official,
+          ...extraAliases(country.name.common),
           ...(country.altSpellings ?? []),
           ...translatedNames
         ])

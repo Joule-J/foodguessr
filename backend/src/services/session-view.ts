@@ -1,9 +1,34 @@
 import type { GuessRecord, RoundRecord, SessionRecord } from "../domain";
+import { countryToAreaMap } from "../data/area-map";
 import {
   bearingDegrees,
   bearingDirection,
   proximityLabel
 } from "./proximity";
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function spoilerTerms(round: RoundRecord) {
+  const terms = [
+    round.targetCountry.name,
+    ...round.targetCountry.aliases,
+    round.dish.areaRaw,
+    countryToAreaMap[round.targetCountry.name]
+  ]
+    .filter((term): term is string => typeof term === "string" && term.trim().length > 0)
+    .sort((left, right) => right.length - left.length);
+
+  return Array.from(new Set(terms.map((term) => term.trim())));
+}
+
+function redactSpoilers(value: string, round: RoundRecord) {
+  return spoilerTerms(round).reduce((current, term) => {
+    const pattern = new RegExp(escapeRegExp(term), "gi");
+    return current.replace(pattern, "[hidden]");
+  }, value);
+}
 
 function mapGuess(guess: GuessRecord, round: RoundRecord) {
   const bearing = bearingDegrees(
@@ -39,11 +64,11 @@ function currentRoundView(round: RoundRecord) {
     guesses: round.guesses.map((guess) => mapGuess(guess, round)),
     dish: {
       id: round.dish.id,
-      title: round.dish.title,
+      title: redactSpoilers(round.dish.title, round),
       imageUrl: round.dish.imageUrl,
       imageGallery: round.dish.imageGallery,
-      instructions: round.dish.instructions,
-      ingredients: round.dish.ingredients
+      instructions: redactSpoilers(round.dish.instructions, round),
+      ingredients: round.dish.ingredients.map((ingredient) => redactSpoilers(ingredient, round))
     }
   };
 }

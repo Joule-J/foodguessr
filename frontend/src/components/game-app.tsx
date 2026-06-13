@@ -93,6 +93,17 @@ function filterCountries(query: string, countries: CountryOption[]) {
     .slice(0, 12);
 }
 
+function isEmojiOnlyMessage(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return false;
+  }
+
+  const withoutSpacing = trimmed.replace(/\s+/g, "");
+  return /^(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F)+$/u.test(withoutSpacing);
+}
+
 export function GameApp() {
   const [countries, setCountries] = useState<CountryOption[]>([]);
   const [room, setRoom] = useState<RoomLaunchResponse | null>(null);
@@ -691,11 +702,20 @@ export function GameApp() {
                   {roomMessages.length > 0 ? (
                     roomMessages.map((message: RoomMessageView) => {
                       const isOwnMessage = message.memberId === room.selfMemberId;
+                      const isEmojiOnly = isEmojiOnlyMessage(message.text);
 
                       return (
                         <div
                           key={message.id}
-                          className={isOwnMessage ? styles.chatMessageOwn : styles.chatMessageOther}
+                          className={
+                            isEmojiOnly
+                              ? isOwnMessage
+                                ? styles.chatEmojiOnlyOwn
+                                : styles.chatEmojiOnlyOther
+                              : isOwnMessage
+                                ? styles.chatMessageOwn
+                                : styles.chatMessageOther
+                          }
                         >
                           <p>{message.text}</p>
                         </div>

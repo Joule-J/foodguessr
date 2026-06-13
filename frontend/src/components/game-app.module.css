@@ -566,6 +566,7 @@
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: visible;
   z-index: 10;
+  background: rgba(238, 240, 236, 0.76);
 }
 
 .panelHeading {
@@ -640,6 +641,27 @@
   padding: 10px 12px;
   border-radius: 16px;
   overflow-wrap: anywhere;
+}
+
+.chatEmojiOnlyOwn,
+.chatEmojiOnlyOther {
+  max-width: 78%;
+  padding: 2px 4px;
+  background: transparent;
+}
+
+.chatEmojiOnlyOwn {
+  justify-self: end;
+}
+
+.chatEmojiOnlyOther {
+  justify-self: start;
+}
+
+.chatEmojiOnlyOwn p,
+.chatEmojiOnlyOther p {
+  font-size: 2rem;
+  line-height: 1.1;
 }
 
 .chatMessageOwn {

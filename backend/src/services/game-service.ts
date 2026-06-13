@@ -146,6 +146,7 @@ export class GameService {
     });
 
     let guessResult = {
+      roundId: round.id,
       correct: false,
       roundEnded: false,
       exhausted: false,
@@ -196,6 +197,7 @@ export class GameService {
       });
 
       guessResult = {
+        roundId: updatedRound.id,
         correct: isCorrect,
         roundEnded: true,
         exhausted,

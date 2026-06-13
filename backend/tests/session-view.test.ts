@@ -62,6 +62,9 @@ describe("createSessionView", () => {
     expect(dish?.title).not.toMatch(/india|indian/i);
     expect(dish?.instructions).not.toMatch(/india|indian/i);
     expect(dish?.ingredients.join(" ")).not.toMatch(/india|indian/i);
-    expect(dish?.title).toContain("[hidden]");
+    expect(dish?.title).not.toContain("[hidden]");
+    expect(dish?.title).toBe("Butter Chicken");
+    expect(dish?.instructions).toBe("Serve this classic with rice in.");
+    expect(dish?.ingredients).toEqual(["spice mix", "Chicken", "Butter"]);
   });
 });

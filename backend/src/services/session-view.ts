@@ -24,10 +24,15 @@ function spoilerTerms(round: RoundRecord) {
 }
 
 function redactSpoilers(value: string, round: RoundRecord) {
-  return spoilerTerms(round).reduce((current, term) => {
+  const redacted = spoilerTerms(round).reduce((current, term) => {
     const pattern = new RegExp(escapeRegExp(term), "gi");
-    return current.replace(pattern, "[hidden]");
+    return current.replace(pattern, " ");
   }, value);
+
+  return redacted
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim();
 }
 
 function mapGuess(guess: GuessRecord, round: RoundRecord) {
@@ -68,7 +73,9 @@ function currentRoundView(round: RoundRecord) {
       imageUrl: round.dish.imageUrl,
       imageGallery: round.dish.imageGallery,
       instructions: redactSpoilers(round.dish.instructions, round),
-      ingredients: round.dish.ingredients.map((ingredient) => redactSpoilers(ingredient, round))
+      ingredients: round.dish.ingredients
+        .map((ingredient) => redactSpoilers(ingredient, round))
+        .filter((ingredient) => ingredient.length > 0)
     }
   };
 }

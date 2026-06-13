@@ -24,7 +24,8 @@ import type {
   CountryOption,
   GuessResponse,
   RoomLaunchResponse,
-  RoomMessageView
+  RoomMessageView,
+  SessionView
 } from "@/lib/types";
 
 import styles from "./game-app.module.css";
@@ -139,6 +140,26 @@ function isEmojiOnlyMessage(text: string) {
   });
 }
 
+function buildSolvedRoundResult(
+  round: SessionView["solvedRounds"][number]
+): GuessResponse["guessResult"] {
+  return {
+    roundId: round.id,
+    correct: round.guessedCorrectly,
+    roundEnded: true,
+    exhausted: !round.guessedCorrectly,
+    distanceKm: 0,
+    penalty: round.totalPenalty,
+    scoreDelta: round.roundScore,
+    revealCountry: round.countryName,
+    dishTitle: round.dishTitle,
+    dishImageUrl: round.dishImageUrl,
+    proximityLabel: round.guessedCorrectly ? "Border" : "Ice Cold",
+    targetBearing: 0,
+    targetDirection: "Here"
+  };
+}
+
 export function GameApp() {
   const [countries, setCountries] = useState<CountryOption[]>([]);
   const [room, setRoom] = useState<RoomLaunchResponse | null>(null);
@@ -164,6 +185,9 @@ export function GameApp() {
   const reactionEmojiPickerRef = useRef<HTMLDivElement | null>(null);
   const composerEmojiRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const announcedRoundIdRef = useRef<string | null>(null);
+  const previousSessionIdRef = useRef<string | null>(null);
+  const previousSolvedCountRef = useRef(0);
   const fallingFlowers = useMemo(
     () =>
       driftingPetals.map((petal, index) => ({
@@ -193,6 +217,14 @@ export function GameApp() {
         selfName: currentRoom.selfName
       };
     });
+  }
+
+  function rememberRoundResult(result: GuessResponse["guessResult"] | null) {
+    setLastResult(result);
+
+    if (result?.roundEnded) {
+      announcedRoundIdRef.current = result.roundId;
+    }
   }
 
   useEffect(() => {
@@ -252,7 +284,7 @@ export function GameApp() {
       applyRoomSnapshot(payload);
 
       if (payload.guessResult?.roundEnded) {
-        setLastResult(payload.guessResult);
+        rememberRoundResult(payload.guessResult);
       }
     };
 
@@ -345,6 +377,35 @@ export function GameApp() {
   );
   const session = room?.session ?? null;
   const currentRound = session?.currentRound ?? null;
+
+  useEffect(() => {
+    if (!session) {
+      previousSessionIdRef.current = null;
+      previousSolvedCountRef.current = 0;
+      announcedRoundIdRef.current = null;
+      return;
+    }
+
+    const latestSolvedRound = session.solvedRounds.at(-1) ?? null;
+
+    if (previousSessionIdRef.current !== session.id) {
+      previousSessionIdRef.current = session.id;
+      previousSolvedCountRef.current = session.solvedRounds.length;
+      announcedRoundIdRef.current = latestSolvedRound?.id ?? null;
+      return;
+    }
+
+    const solvedCountIncreased = session.solvedRounds.length > previousSolvedCountRef.current;
+    const latestSolvedRoundIsNew =
+      latestSolvedRound && latestSolvedRound.id !== announcedRoundIdRef.current;
+
+    if (solvedCountIncreased && latestSolvedRoundIsNew) {
+      rememberRoundResult(buildSolvedRoundResult(latestSolvedRound));
+    }
+
+    previousSolvedCountRef.current = session.solvedRounds.length;
+  }, [session]);
+
   const wrongGuessCount = useMemo(
     () => currentRound?.guesses.filter((guess) => !guess.isCorrect).length ?? 0,
     [currentRound]
@@ -370,8 +431,8 @@ export function GameApp() {
       return;
     }
 
-    setError(null);
-    setLastResult(null);
+      setError(null);
+    rememberRoundResult(null);
     setIsBusy(true);
 
     try {
@@ -402,8 +463,8 @@ export function GameApp() {
       return;
     }
 
-    setError(null);
-    setLastResult(null);
+      setError(null);
+    rememberRoundResult(null);
     setIsBusy(true);
 
     try {
@@ -430,7 +491,7 @@ export function GameApp() {
     try {
       const result = await submitGuess(room.roomCode, room.selfMemberId, countryId);
       applyRoomSnapshot(result.room);
-      setLastResult(result.guessResult.roundEnded ? result.guessResult : null);
+      rememberRoundResult(result.guessResult.roundEnded ? result.guessResult : null);
       setQuery("");
       setIsCountryMenuOpen(false);
     } catch (guessError) {
@@ -516,7 +577,7 @@ export function GameApp() {
     try {
       const snapshot = await restartRoom(room.roomCode, room.selfMemberId);
       applyRoomSnapshot(snapshot);
-      setLastResult(null);
+      rememberRoundResult(null);
       setQuery("");
       setChatDraft("");
       setIsCountryMenuOpen(false);
@@ -533,7 +594,7 @@ export function GameApp() {
     setRoom(null);
     setJoinCode("");
     setQuery("");
-    setLastResult(null);
+    rememberRoundResult(null);
     setError(null);
     setChatDraft("");
     setIsJoinExpanded(false);
@@ -800,7 +861,7 @@ export function GameApp() {
                     />
                     <div className={styles.roundRevealShade} />
                     {lastResult.correct ? (
-                      <div className={styles.trophyReveal}>
+                      <div className={`${styles.trophyReveal} ${styles.trophyRevealWin}`}>
                         <svg viewBox="0 0 64 64" aria-hidden="true">
                           <path d="M20 10h24v10c0 10-5 18-12 18s-12-8-12-18V10Z" />
                           <path d="M20 15H10v4c0 8 5 13 13 13M44 15h10v4c0 8-5 13-13 13M32 38v9M23 54h18M27 47h10v7" />
@@ -809,8 +870,12 @@ export function GameApp() {
                         <span>+{lastResult.scoreDelta} points</span>
                       </div>
                     ) : (
-                      <div className={styles.countryReveal}>
-                        <span>The correct country was</span>
+                      <div className={`${styles.countryReveal} ${styles.countryRevealLoss}`}>
+                        <div className={styles.lossBurst} aria-hidden="true">
+                          <span />
+                          <span />
+                        </div>
+                        <span>{lastResult.exhausted ? "Round lost" : "No one solved it"}</span>
                         <strong>{lastResult.revealCountry}</strong>
                         <p>Moving to the next dish...</p>
                       </div>
@@ -830,7 +895,7 @@ export function GameApp() {
               ) : currentRound ? (
                 <>
                   <div className={styles.imageWrap}>
-                    {wrongGuessCount >= 2 ? (
+                    {wrongGuessCount >= 2 && currentRound.dish.title.trim() ? (
                       <div className={styles.dishTitleHint}>
                         <span>Dish</span>
                         <strong>{currentRound.dish.title}</strong>
@@ -859,7 +924,9 @@ export function GameApp() {
 
                     <div className={styles.recipeSection}>
                       <h3>Recipe</h3>
-                      <p className={styles.instructions}>{currentRound.dish.instructions}</p>
+                      <p className={styles.instructions}>
+                        {currentRound.dish.instructions || "Keep guessing to reveal more."}
+                      </p>
                     </div>
                   </div>
                 </>

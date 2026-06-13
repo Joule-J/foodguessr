@@ -541,6 +541,10 @@
   text-align: center;
 }
 
+.trophyRevealWin {
+  animation: revealPulse 760ms ease both;
+}
+
 .trophyReveal svg {
   width: 104px;
   height: 104px;
@@ -569,6 +573,31 @@
 .countryReveal strong {
   color: #ffd56a;
   animation: countryRevealIn 600ms ease both;
+}
+
+.countryRevealLoss {
+  gap: 12px;
+  animation: revealShakeIn 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lossBurst {
+  position: relative;
+  width: 108px;
+  height: 108px;
+}
+
+.lossBurst span {
+  position: absolute;
+  inset: 0;
+  border: 4px solid rgba(255, 164, 129, 0.72);
+  border-radius: 999px;
+  animation: lossRipple 900ms ease-out both;
+}
+
+.lossBurst span:last-child {
+  inset: 18px;
+  border-color: rgba(255, 214, 106, 0.9);
+  animation-delay: 120ms;
 }
 
 @keyframes revealImageIn {
@@ -607,6 +636,61 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes revealPulse {
+  0% {
+    transform: scale(0.94);
+  }
+
+  65% {
+    transform: scale(1.02);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes revealShakeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.92);
+  }
+
+  55% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.01);
+  }
+
+  72% {
+    transform: translateX(-8px);
+  }
+
+  86% {
+    transform: translateX(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes lossRipple {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
   }
 }
 

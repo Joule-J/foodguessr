@@ -50,6 +50,7 @@ export type SessionView = {
 export type GuessResponse = {
   session: SessionView;
   guessResult: {
+    roundId: string;
     correct: boolean;
     roundEnded: boolean;
     exhausted: boolean;

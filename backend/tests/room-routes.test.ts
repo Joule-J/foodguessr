@@ -12,7 +12,12 @@ type RoomSnapshot = {
   selfMemberId: string;
   selfName: string;
   members: Array<{ id: string; name: string }>;
-  messages: Array<{ text: string }>;
+  messages: Array<{
+    id: string;
+    text: string;
+    replyTo?: { id: string; senderName: string; text: string } | null;
+    reactions?: Array<{ memberId: string; emoji: string }>;
+  }>;
   session: {
     id: string;
     status: "IN_PROGRESS" | "COMPLETED";
@@ -198,6 +203,51 @@ describe("room routes", () => {
     const [hostEvent, guestEvent] = await Promise.all([hostMessagePromise, guestMessagePromise]);
     expect(hostEvent.messages.at(-1)?.text).toBe("Check the spices list.");
     expect(guestEvent.messages.at(-1)?.text).toBe("Check the spices list.");
+  }, ROOM_TEST_TIMEOUT_MS);
+
+  test("chat messages can reply to previous messages", async () => {
+    const createResponse = await request(app).post("/api/rooms").send({ name: "Host" });
+    const hostRoom = createResponse.body as RoomSnapshot;
+
+    const firstMessageResponse = await request(app)
+      .post(`/api/rooms/${hostRoom.roomCode}/messages`)
+      .send({ memberId: hostRoom.selfMemberId, text: "Try the sauce first." });
+
+    expect(firstMessageResponse.status).toBe(201);
+
+    const firstMessageId = firstMessageResponse.body.messages.at(-1)?.id;
+
+    const replyResponse = await request(app)
+      .post(`/api/rooms/${hostRoom.roomCode}/messages`)
+      .send({
+        memberId: hostRoom.selfMemberId,
+        text: "Good call.",
+        replyToMessageId: firstMessageId
+      });
+
+    expect(replyResponse.status).toBe(201);
+    expect(replyResponse.body.messages.at(-1)?.replyTo?.id).toBe(firstMessageId);
+    expect(replyResponse.body.messages.at(-1)?.replyTo?.text).toBe("Try the sauce first.");
+  }, ROOM_TEST_TIMEOUT_MS);
+
+  test("chat messages can receive emoji reactions", async () => {
+    const createResponse = await request(app).post("/api/rooms").send({ name: "Host" });
+    const hostRoom = createResponse.body as RoomSnapshot;
+
+    const messageResponse = await request(app)
+      .post(`/api/rooms/${hostRoom.roomCode}/messages`)
+      .send({ memberId: hostRoom.selfMemberId, text: "Need one more revision." });
+
+    const messageId = messageResponse.body.messages.at(-1)?.id;
+
+    const reactionResponse = await request(app)
+      .post(`/api/rooms/${hostRoom.roomCode}/messages/${messageId}/reactions`)
+      .send({ memberId: hostRoom.selfMemberId, emoji: "❤️" });
+
+    expect(reactionResponse.status).toBe(200);
+    expect(reactionResponse.body.messages.at(-1)?.reactions).toEqual([
+      { memberId: hostRoom.selfMemberId, emoji: "❤️" }
+    ]);
   }, ROOM_TEST_TIMEOUT_MS);
 
   test("valid guesses broadcast room updates and completed rooms reject extra guesses", async () => {

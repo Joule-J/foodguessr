@@ -1,5 +1,5 @@
 :root {
-  --background: #f7f1df;
+  --background: #fff3f6;
   --foreground: #112318;
 }
 
@@ -21,9 +21,10 @@ body {
   flex-direction: column;
   color: var(--foreground);
   background:
-    radial-gradient(circle at top left, rgba(255, 202, 130, 0.7), transparent 30%),
-    radial-gradient(circle at top right, rgba(130, 195, 150, 0.65), transparent 28%),
-    linear-gradient(180deg, #fbf6e8 0%, #efe5c8 100%);
+    radial-gradient(circle at 12% 8%, rgba(255, 174, 196, 0.55), transparent 24%),
+    radial-gradient(circle at 88% 10%, rgba(255, 214, 230, 0.72), transparent 22%),
+    radial-gradient(circle at 82% 84%, rgba(255, 190, 210, 0.44), transparent 18%),
+    linear-gradient(180deg, #fff8fb 0%, #ffeef4 48%, #ffe5ee 100%);
   font-family: var(--font-body), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

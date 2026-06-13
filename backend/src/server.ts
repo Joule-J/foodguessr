@@ -208,7 +208,8 @@ export async function createServer(input?: {
       const body = z
         .object({
           memberId: z.string().min(1),
-          text: z.string().trim().min(1).max(280)
+          text: z.string().trim().min(1).max(280),
+          replyToMessageId: z.string().min(1).optional()
         })
         .parse(request.body);
 
@@ -228,7 +229,21 @@ export async function createServer(input?: {
         throw new HttpError(404, "Room member not found.");
       }
 
-      const message = roomService.addMessage(request.params.code, body.memberId, body.text);
+      let message;
+      try {
+        message = roomService.addMessage(
+          request.params.code,
+          body.memberId,
+          body.text,
+          body.replyToMessageId
+        );
+      } catch (error) {
+        if (error instanceof Error && error.message === "Reply target not found.") {
+          throw new HttpError(404, "Reply target not found.");
+        }
+
+        throw error;
+      }
 
       if (!message) {
         throw new HttpError(404, "Room member not found.");
@@ -245,6 +260,53 @@ export async function createServer(input?: {
       io.to(room.code).emit("room:updated", snapshot);
 
       response.status(201).json(snapshot);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/rooms/:code/messages/:messageId/reactions", async (request, response, next) => {
+    try {
+      const body = z
+        .object({
+          memberId: z.string().min(1),
+          emoji: z.string().trim().min(1).max(32)
+        })
+        .parse(request.body);
+
+      const room = roomService.findRoom(request.params.code);
+
+      if (!room) {
+        throw new HttpError(404, "Room not found.");
+      }
+
+      const member = roomService.getMember(request.params.code, body.memberId);
+
+      if (!member) {
+        throw new HttpError(404, "Room member not found.");
+      }
+
+      try {
+        roomService.addReaction(request.params.code, body.memberId, request.params.messageId, body.emoji);
+      } catch (error) {
+        if (error instanceof Error && error.message === "Message not found.") {
+          throw new HttpError(404, "Message not found.");
+        }
+
+        throw error;
+      }
+
+      const session = await gameService.getSession(room.sessionId);
+      roomService.syncRoomStatus(room.code, session.status);
+      const snapshot = {
+        ...roomService.toClientPayload(room, member.id),
+        session
+      };
+
+      io.to(room.code).emit("room:message_added", snapshot);
+      io.to(room.code).emit("room:updated", snapshot);
+
+      response.status(200).json(snapshot);
     } catch (error) {
       next(error);
     }

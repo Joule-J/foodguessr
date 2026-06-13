@@ -14,6 +14,7 @@ import {
   fetchCountries,
   fetchRoomState,
   joinRoom,
+  reactToRoomMessage,
   restartRoom,
   sendRoomMessage,
   submitGuess
@@ -44,7 +45,36 @@ const landingPlates = [
     title: "Sweet Treats"
   }
 ] as const;
-
+const driftingPetals = [
+  { left: "3%", delay: "0s", duration: "18s", size: "34px", sway: "-18px", opacity: 0.62 },
+  { left: "11%", delay: "-4s", duration: "22s", size: "26px", sway: "14px", opacity: 0.5 },
+  { left: "19%", delay: "-9s", duration: "17s", size: "32px", sway: "-12px", opacity: 0.58 },
+  { left: "28%", delay: "-2s", duration: "24s", size: "24px", sway: "10px", opacity: 0.42 },
+  { left: "39%", delay: "-6s", duration: "20s", size: "30px", sway: "-16px", opacity: 0.56 },
+  { left: "48%", delay: "-11s", duration: "23s", size: "36px", sway: "12px", opacity: 0.48 },
+  { left: "58%", delay: "-8s", duration: "19s", size: "28px", sway: "-20px", opacity: 0.52 },
+  { left: "67%", delay: "-13s", duration: "22s", size: "38px", sway: "11px", opacity: 0.46 },
+  { left: "76%", delay: "-5s", duration: "18s", size: "27px", sway: "-14px", opacity: 0.54 },
+  { left: "84%", delay: "-1s", duration: "25s", size: "33px", sway: "13px", opacity: 0.44 },
+  { left: "91%", delay: "-10s", duration: "21s", size: "25px", sway: "-11px", opacity: 0.4 }
+] as const;
+const flowerAssets = [
+  "/flowers/flower.png",
+  "/flowers/flower-1.png",
+  "/flowers/flower-2.png",
+  "/flowers/mexican-aster.png",
+  "/flowers/cherry-blossom.png",
+  "/flowers/tulips.png",
+  "/flowers/sakura.png"
+] as const;
+const loveReactionEmojis = ["❤️", "🫠", "🤔", "😢", "😘"] as const;
+const landingFlowerFrames = [
+  { left: "4%", top: "6%", size: "72px", rotate: "-14deg", opacity: 0.28 },
+  { right: "5%", top: "10%", size: "82px", rotate: "12deg", opacity: 0.24 },
+  { left: "8%", bottom: "9%", size: "88px", rotate: "-9deg", opacity: 0.22 },
+  { right: "11%", bottom: "14%", size: "70px", rotate: "16deg", opacity: 0.2 },
+  { left: "44%", top: "16%", size: "54px", rotate: "-7deg", opacity: 0.18 }
+] as const;
 type RoomSocketPayload = RoomLaunchResponse & {
   actorMemberId?: string;
   guessResult?: GuessResponse["guessResult"];
@@ -93,15 +123,20 @@ function filterCountries(query: string, countries: CountryOption[]) {
     .slice(0, 12);
 }
 
-function isEmojiOnlyMessage(value: string) {
-  const trimmed = value.trim();
+function isEmojiOnlyMessage(text: string) {
+  const trimmedText = text.trim();
 
-  if (!trimmed) {
+  if (!trimmedText) {
     return false;
   }
 
-  const withoutSpacing = trimmed.replace(/\s+/g, "");
-  return /^(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}|\uFE0F)+$/u.test(withoutSpacing);
+  const emojiPattern =
+    /^(?:\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{Emoji_Modifier})?)*|\p{Regional_Indicator}{2}|[0-9#*]\uFE0F?\u20E3)$/u;
+  const segments = new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(trimmedText);
+
+  return Array.from(segments).every(({ segment }) => {
+    return /^\s+$/u.test(segment) || emojiPattern.test(segment);
+  });
 }
 
 export function GameApp() {
@@ -117,11 +152,34 @@ export function GameApp() {
   const [landingIndex, setLandingIndex] = useState(0);
   const [isJoinExpanded, setIsJoinExpanded] = useState(false);
   const [isCountryMenuOpen, setIsCountryMenuOpen] = useState(false);
-  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [isReactionEmojiPickerOpen, setIsReactionEmojiPickerOpen] = useState(false);
+  const [isComposerEmojiPanelOpen, setIsComposerEmojiPanelOpen] = useState(false);
+  const [isComposerEmojiPickerOpen, setIsComposerEmojiPickerOpen] = useState(false);
+  const [reactingMessageId, setReactingMessageId] = useState<string | null>(null);
+  const [replyTarget, setReplyTarget] = useState<RoomMessageView | null>(null);
+  const [activeMessageActionId, setActiveMessageActionId] = useState<string | null>(null);
+  const [activeReactionPickerMessageId, setActiveReactionPickerMessageId] = useState<string | null>(null);
   const chatScrollerRef = useRef<HTMLDivElement | null>(null);
-  const emojiPickerRef = useRef<HTMLDivElement | null>(null);
+  const reactionPickerRef = useRef<HTMLDivElement | null>(null);
+  const reactionEmojiPickerRef = useRef<HTMLDivElement | null>(null);
+  const composerEmojiRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
-
+  const fallingFlowers = useMemo(
+    () =>
+      driftingPetals.map((petal, index) => ({
+        ...petal,
+        imageUrl: flowerAssets[(index * 3 + 2) % flowerAssets.length]
+      })),
+    []
+  );
+  const landingDecorFlowers = useMemo(
+    () =>
+      landingFlowerFrames.map((flower, index) => ({
+        ...flower,
+        imageUrl: flowerAssets[(index * 2 + 1) % flowerAssets.length]
+      })),
+    []
+  );
   function applyRoomSnapshot(snapshot: RoomLaunchResponse) {
     setRoom((currentRoom) => {
       if (!currentRoom) {
@@ -163,7 +221,10 @@ export function GameApp() {
       return;
     }
 
-    node.scrollTop = node.scrollHeight;
+    node.scrollTo({
+      top: node.scrollHeight,
+      behavior: "smooth"
+    });
   }, [room?.messages]);
 
   useEffect(() => {
@@ -218,19 +279,33 @@ export function GameApp() {
   }, [room?.roomCode, room?.selfMemberId]);
 
   useEffect(() => {
-    if (!isEmojiPickerOpen) {
+    if (
+      !activeMessageActionId &&
+      !activeReactionPickerMessageId &&
+      !isComposerEmojiPanelOpen
+    ) {
       return;
     }
 
     const closeOnOutsideClick = (event: PointerEvent) => {
-      if (!emojiPickerRef.current?.contains(event.target as Node)) {
-        setIsEmojiPickerOpen(false);
+      if (
+        reactionPickerRef.current?.contains(event.target as Node) ||
+        reactionEmojiPickerRef.current?.contains(event.target as Node) ||
+        composerEmojiRef.current?.contains(event.target as Node)
+      ) {
+        return;
       }
+
+      setActiveMessageActionId(null);
+      setActiveReactionPickerMessageId(null);
+      setIsReactionEmojiPickerOpen(false);
+      setIsComposerEmojiPanelOpen(false);
+      setIsComposerEmojiPickerOpen(false);
     };
 
     document.addEventListener("pointerdown", closeOnOutsideClick);
     return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
-  }, [isEmojiPickerOpen]);
+  }, [activeMessageActionId, activeReactionPickerMessageId, isComposerEmojiPanelOpen]);
 
   useEffect(() => {
     if (!lastResult?.roundEnded) {
@@ -376,8 +451,14 @@ export function GameApp() {
     setIsBusy(true);
 
     try {
-      const snapshot = await sendRoomMessage(room.roomCode, room.selfMemberId, trimmedText);
+      const snapshot = await sendRoomMessage(
+        room.roomCode,
+        room.selfMemberId,
+        trimmedText,
+        replyTarget?.id
+      );
       applyRoomSnapshot(snapshot);
+      setReplyTarget(null);
 
       if (clearDraft) {
         setChatDraft("");
@@ -393,8 +474,35 @@ export function GameApp() {
     await sendChatText(chatDraft, true);
   }
 
-  function handleEmojiClick(emojiData: EmojiClickData) {
+  async function handleMessageReaction(messageId: string, emoji: string) {
+    if (!room || reactingMessageId) {
+      return;
+    }
+
+    setError(null);
+    setReactingMessageId(messageId);
+
+    try {
+      const snapshot = await reactToRoomMessage(room.roomCode, messageId, room.selfMemberId, emoji);
+      applyRoomSnapshot(snapshot);
+      setActiveReactionPickerMessageId(null);
+      setActiveMessageActionId(null);
+      setIsReactionEmojiPickerOpen(false);
+    } catch (reactionError) {
+      setError(reactionError instanceof Error ? reactionError.message : "Failed to react to message.");
+    } finally {
+      setReactingMessageId(null);
+    }
+  }
+
+  function handleComposerEmojiClick(emojiData: EmojiClickData) {
     setChatDraft((currentDraft) => `${currentDraft}${emojiData.emoji}`);
+  }
+
+  function handleReactionEmojiClick(emojiData: EmojiClickData) {
+    if (activeReactionPickerMessageId) {
+      void handleMessageReaction(activeReactionPickerMessageId, emojiData.emoji);
+    }
   }
 
   async function handlePlayAgain() {
@@ -430,11 +538,39 @@ export function GameApp() {
     setChatDraft("");
     setIsJoinExpanded(false);
     setIsCountryMenuOpen(false);
-    setIsEmojiPickerOpen(false);
+    setIsReactionEmojiPickerOpen(false);
+    setIsComposerEmojiPanelOpen(false);
+    setIsComposerEmojiPickerOpen(false);
+    setReactingMessageId(null);
+    setReplyTarget(null);
+    setActiveMessageActionId(null);
+    setActiveReactionPickerMessageId(null);
   }
 
   return (
     <main className={styles.shell}>
+      <div className={styles.loveBackdrop} aria-hidden="true">
+        <div className={styles.loveGlowLeft} />
+        <div className={styles.loveGlowRight} />
+        {fallingFlowers.map((petal, index) => (
+          <span
+            key={`${petal.left}-${index}`}
+            className={styles.fallingPetal}
+            style={
+              {
+                left: petal.left,
+                animationDelay: petal.delay,
+                animationDuration: petal.duration,
+                width: petal.size,
+                height: petal.size,
+                opacity: petal.opacity,
+                "--petal-sway": petal.sway,
+                "--flower-image": `url("${petal.imageUrl}")`
+              } as CSSProperties
+            }
+          />
+        ))}
+      </div>
       {room && session && (
         <header className={styles.header}>
           <div className={styles.headerSide}>
@@ -476,6 +612,28 @@ export function GameApp() {
         <section className={styles.emptyState}>
           <div className={styles.landingShell}>
             <div className={styles.landingVisual}>
+              <div className={styles.landingDecorLayer} aria-hidden="true">
+                {landingDecorFlowers.map((flower, index) => (
+                  <img
+                    key={`landing-visual-${index}`}
+                    src={flower.imageUrl}
+                    alt=""
+                    className={styles.decorFlower}
+                    style={
+                      {
+                        left: "left" in flower ? flower.left : undefined,
+                        right: "right" in flower ? flower.right : undefined,
+                        top: "top" in flower ? flower.top : undefined,
+                        bottom: "bottom" in flower ? flower.bottom : undefined,
+                        width: flower.size,
+                        height: flower.size,
+                        opacity: flower.opacity,
+                        transform: `rotate(${flower.rotate})`
+                      } as CSSProperties
+                    }
+                  />
+                ))}
+              </div>
               {landingPlates.map((plate, index) => (
                 <img
                   key={plate.title}
@@ -497,6 +655,28 @@ export function GameApp() {
               </div>
             </div>
             <div className={styles.landingPanel}>
+              <div className={styles.landingDecorLayer} aria-hidden="true">
+                {landingDecorFlowers.map((flower, index) => (
+                  <img
+                    key={`landing-panel-${index}`}
+                    src={flowerAssets[(index + 3) % flowerAssets.length]}
+                    alt=""
+                    className={styles.decorFlowerSoft}
+                    style={
+                      {
+                        left: "left" in flower ? flower.left : undefined,
+                        right: "right" in flower ? flower.right : undefined,
+                        top: "top" in flower ? flower.top : undefined,
+                        bottom: "bottom" in flower ? flower.bottom : undefined,
+                        width: `calc(${flower.size} * 0.72)`,
+                        height: `calc(${flower.size} * 0.72)`,
+                        opacity: flower.opacity * 0.85,
+                        transform: `rotate(${flower.rotate})`
+                      } as CSSProperties
+                    }
+                  />
+                ))}
+              </div>
               <div className={styles.landingIntro}>
                 <span className={styles.landingEyebrow}>Realtime Co-op</span>
                 <h1 className={styles.landingTitle}>Begùme</h1>
@@ -702,58 +882,272 @@ export function GameApp() {
                   {roomMessages.length > 0 ? (
                     roomMessages.map((message: RoomMessageView) => {
                       const isOwnMessage = message.memberId === room.selfMemberId;
+                      const groupedReactions = Array.from(
+                        message.reactions.reduce((map, reaction) => {
+                          map.set(reaction.emoji, (map.get(reaction.emoji) ?? 0) + 1);
+                          return map;
+                        }, new Map<string, number>())
+                      );
+                      const isActionOpen = activeMessageActionId === message.id;
+                      const isReactionPending = reactingMessageId === message.id;
                       const isEmojiOnly = isEmojiOnlyMessage(message.text);
+                      const repliedMessage = message.replyTo
+                        ? roomMessages.find((item) => item.id === message.replyTo?.id) ?? null
+                        : null;
 
                       return (
                         <div
                           key={message.id}
-                          className={
-                            isEmojiOnly
-                              ? isOwnMessage
-                                ? styles.chatEmojiOnlyOwn
-                                : styles.chatEmojiOnlyOther
-                              : isOwnMessage
-                                ? styles.chatMessageOwn
-                                : styles.chatMessageOther
-                          }
+                          className={`${styles.chatMessageRow} ${
+                            activeReactionPickerMessageId === message.id
+                              ? styles.chatMessageRowActive
+                              : ""
+                          } ${
+                            groupedReactions.length > 0 ? styles.chatMessageRowWithReaction : ""
+                          }`}
                         >
-                          <p>{message.text}</p>
+                          <div
+                            className={
+                              isOwnMessage ? styles.chatMessageOwn : styles.chatMessageOther
+                            }
+                            onMouseEnter={() => setActiveMessageActionId(message.id)}
+                            ref={isActionOpen ? reactionPickerRef : null}
+                          >
+                            {message.replyTo ? (
+                              <button
+                                type="button"
+                                className={styles.chatReplyPreview}
+                                onClick={() => setReplyTarget(repliedMessage)}
+                              >
+                                <span className={styles.chatReplyQuote}>
+                                  {message.replyTo.text}
+                                </span>
+                              </button>
+                            ) : null}
+                            {isEmojiOnly ? (
+                              <span className={styles.chatEmojiMessage}>{message.text}</span>
+                            ) : (
+                              <p>{message.text}</p>
+                            )}
+                            {groupedReactions.length > 0 ? (
+                              <div className={styles.chatReactionBadgeRow}>
+                                {groupedReactions.map(([emoji, count]) => (
+                                  <button
+                                    key={`${message.id}-${emoji}`}
+                                    type="button"
+                                    className={`${styles.chatReactionBadge} ${
+                                      message.reactions.some(
+                                        (reaction) =>
+                                          reaction.memberId === room.selfMemberId &&
+                                          reaction.emoji === emoji
+                                      )
+                                        ? styles.chatReactionBadgeSelected
+                                        : ""
+                                    }`}
+                                    onClick={() => void handleMessageReaction(message.id, emoji)}
+                                    disabled={isReactionPending}
+                                  >
+                                    <span>{emoji}</span>
+                                    {count > 1 ? <strong>{count}</strong> : null}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
+                            <div
+                              className={`${styles.chatMessageActions} ${
+                                isActionOpen ? styles.chatMessageActionsOpen : ""
+                              } ${isOwnMessage ? styles.chatMessageActionsOwn : styles.chatMessageActionsOther}`}
+                            >
+                              <button
+                                type="button"
+                                className={styles.chatActionIconButton}
+                                onClick={() => {
+                                  setActiveMessageActionId(message.id);
+                                  setActiveReactionPickerMessageId((currentId) => {
+                                    const nextId = currentId === message.id ? null : message.id;
+
+                                    if (nextId === null) {
+                                      setIsReactionEmojiPickerOpen(false);
+                                    }
+
+                                    return nextId;
+                                  });
+                                }}
+                                aria-label="React to message"
+                                disabled={isReactionPending}
+                              >
+                                ☺
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.chatActionIconButton}
+                                onClick={() => {
+                                  setReplyTarget(message);
+                                  setActiveMessageActionId(null);
+                                  setActiveReactionPickerMessageId(null);
+                                }}
+                                aria-label="Reply to message"
+                              >
+                                ↩
+                              </button>
+                            </div>
+                            {activeReactionPickerMessageId === message.id ? (
+                              <div className={styles.chatReactionPopover}>
+                                <div className={styles.chatReactionQuickRow}>
+                                  {loveReactionEmojis.map((emoji) => (
+                                    <button
+                                      key={`${message.id}-${emoji}`}
+                                      type="button"
+                                      className={`${styles.chatReactionQuickButton} ${
+                                        message.reactions.some(
+                                          (reaction) =>
+                                            reaction.memberId === room.selfMemberId &&
+                                            reaction.emoji === emoji
+                                        )
+                                          ? styles.chatReactionQuickButtonSelected
+                                          : ""
+                                      }`}
+                                      onClick={() => void handleMessageReaction(message.id, emoji)}
+                                      disabled={isReactionPending}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    className={styles.chatReactionMoreButton}
+                                    onClick={() => {
+                                      setActiveMessageActionId(message.id);
+                                      setActiveReactionPickerMessageId(message.id);
+                                      setIsReactionEmojiPickerOpen((isOpen) => !isOpen);
+                                    }}
+                                    aria-label="More emojis"
+                                    disabled={isReactionPending}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
-                        );
+                      );
                       })
                   ) : (
                     <div className={styles.chatEmptyState}>
                       <strong>No messages yet</strong>
-                      <span>Start the conversation with your teammate.</span>
+                      <span>
+                        Start the conversation{" "}
+                        <span className={styles.chatEmptyPromptHighlight}>
+                          "Marketing&apos;i ne yaptın"
+                        </span>
+                      </span>
                     </div>
                   )}
                 </div>
+                {isReactionEmojiPickerOpen && activeReactionPickerMessageId ? (
+                  <div
+                    className={styles.chatReactionPickerOverlay}
+                    ref={reactionEmojiPickerRef}
+                  >
+                    <button
+                      type="button"
+                      className={styles.chatReactionPickerClose}
+                      onClick={() => setIsReactionEmojiPickerOpen(false)}
+                      aria-label="Close emoji picker"
+                    >
+                      ×
+                    </button>
+                    <EmojiPicker
+                      onEmojiClick={handleReactionEmojiClick}
+                      emojiStyle={EmojiStyle.NATIVE}
+                      theme={Theme.LIGHT}
+                      width="100%"
+                      height="100%"
+                      searchPlaceHolder="Search emoji"
+                      previewConfig={{ showPreview: false }}
+                      lazyLoadEmojis
+                    />
+                  </div>
+                ) : null}
                 <div className={styles.chatControls}>
-                  <div className={styles.chatComposer}>
-                    <div className={styles.emojiPickerAnchor} ref={emojiPickerRef}>
+                  {replyTarget ? (
+                    <div className={styles.replyComposerBar}>
+                      <div className={styles.replyComposerCopy}>
+                        <strong>Replying to {replyTarget.senderName}</strong>
+                        <span>{replyTarget.text}</span>
+                      </div>
                       <button
                         type="button"
-                        className={styles.emojiToggleButton}
-                        onClick={() => setIsEmojiPickerOpen((isOpen) => !isOpen)}
-                        aria-label="Open emoji picker"
-                        aria-expanded={isEmojiPickerOpen}
+                        className={styles.replyDismissButton}
+                        onClick={() => setReplyTarget(null)}
+                        aria-label="Cancel reply"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : null}
+                  <div className={styles.chatComposer}>
+                    <div className={styles.composerEmojiAnchor} ref={composerEmojiRef}>
+                      <button
+                        type="button"
+                        className={`${styles.composerEmojiButton} ${
+                          isComposerEmojiPanelOpen ? styles.composerEmojiButtonOpen : ""
+                        }`}
+                        onClick={() => {
+                          setIsComposerEmojiPanelOpen((isOpen) => !isOpen);
+                          setIsComposerEmojiPickerOpen(false);
+                          setActiveMessageActionId(null);
+                          setActiveReactionPickerMessageId(null);
+                          setIsReactionEmojiPickerOpen(false);
+                        }}
+                        aria-label="Add emoji"
+                        aria-expanded={isComposerEmojiPanelOpen}
                       >
                         ☺
                       </button>
-                      {isEmojiPickerOpen && (
-                        <div className={styles.emojiPickerPanel}>
-                          <EmojiPicker
-                            onEmojiClick={handleEmojiClick}
-                            emojiStyle={EmojiStyle.NATIVE}
-                            theme={Theme.LIGHT}
-                            width="100%"
-                            height="100%"
-                            searchPlaceHolder="Search emoji"
-                            previewConfig={{ showPreview: false }}
-                            lazyLoadEmojis
-                          />
+                      {isComposerEmojiPanelOpen ? (
+                        <div className={styles.composerEmojiPanel}>
+                          <div className={styles.composerEmojiQuickRow}>
+                            {loveReactionEmojis.map((emoji) => (
+                              <button
+                                key={`composer-${emoji}`}
+                                type="button"
+                                className={styles.composerEmojiQuickButton}
+                                onClick={() =>
+                                  setChatDraft((currentDraft) => `${currentDraft}${emoji}`)
+                                }
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              className={styles.composerEmojiMoreButton}
+                              onClick={() =>
+                                setIsComposerEmojiPickerOpen((isOpen) => !isOpen)
+                              }
+                              aria-label="More emojis"
+                            >
+                              +
+                            </button>
+                          </div>
+                          {isComposerEmojiPickerOpen ? (
+                            <div className={styles.composerEmojiPickerPanel}>
+                              <EmojiPicker
+                                onEmojiClick={handleComposerEmojiClick}
+                                emojiStyle={EmojiStyle.NATIVE}
+                                theme={Theme.LIGHT}
+                                width="100%"
+                                height="100%"
+                                searchPlaceHolder="Search emoji"
+                                previewConfig={{ showPreview: false }}
+                                lazyLoadEmojis
+                              />
+                            </div>
+                          ) : null}
                         </div>
-                      )}
+                      ) : null}
                     </div>
                     <input
                       className={styles.chatInput}
@@ -766,6 +1160,7 @@ export function GameApp() {
                         }
                       }}
                       placeholder="Write a message"
+                      maxLength={280}
                     />
                     <button
                       type="button"

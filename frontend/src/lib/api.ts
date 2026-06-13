@@ -78,14 +78,32 @@ export async function fetchRoomState(
 export async function sendRoomMessage(
   code: string,
   memberId: string,
-  text: string
+  text: string,
+  replyToMessageId?: string
 ): Promise<RoomLaunchResponse> {
   const response = await fetch(`${backendUrl}/api/rooms/${code}/messages`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ memberId, text })
+    body: JSON.stringify({ memberId, text, replyToMessageId })
+  });
+
+  return parseResponse<RoomLaunchResponse>(response);
+}
+
+export async function reactToRoomMessage(
+  code: string,
+  messageId: string,
+  memberId: string,
+  emoji: string
+): Promise<RoomLaunchResponse> {
+  const response = await fetch(`${backendUrl}/api/rooms/${code}/messages/${messageId}/reactions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ memberId, emoji })
   });
 
   return parseResponse<RoomLaunchResponse>(response);

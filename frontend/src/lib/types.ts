@@ -77,6 +77,15 @@ export type RoomMessageView = {
   senderName: string;
   senderSlot: "PLAYER_1" | "PLAYER_2";
   text: string;
+  replyTo: {
+    id: string;
+    senderName: string;
+    text: string;
+  } | null;
+  reactions: Array<{
+    memberId: string;
+    emoji: string;
+  }>;
   createdAt: string;
 };
 

@@ -18,6 +18,11 @@ type RoomMessage = {
   senderName: string;
   senderSlot: RoomSlot;
   text: string;
+  replyToMessageId?: string;
+  reactions: Array<{
+    memberId: string;
+    emoji: string;
+  }>;
   createdAt: Date;
 };
 
@@ -117,7 +122,7 @@ export class RoomService {
     return room.members.find((member) => member.id === memberId) ?? null;
   }
 
-  addMessage(code: string, memberId: string, text: string) {
+  addMessage(code: string, memberId: string, text: string, replyToMessageId?: string) {
     const room = this.findRoom(code);
 
     if (!room) {
@@ -130,16 +135,63 @@ export class RoomService {
       return null;
     }
 
+    const replyTarget = replyToMessageId
+      ? room.messages.find((message) => message.id === replyToMessageId)
+      : null;
+
+    if (replyToMessageId && !replyTarget) {
+      throw new Error("Reply target not found.");
+    }
+
     const message: RoomMessage = {
       id: randomUUID(),
       memberId,
       senderName: member.name,
       senderSlot: member.slot,
       text,
+      replyToMessageId,
+      reactions: [],
       createdAt: new Date()
     };
 
     room.messages.push(message);
+    return message;
+  }
+
+  addReaction(code: string, memberId: string, messageId: string, emoji: string) {
+    const room = this.findRoom(code);
+
+    if (!room) {
+      return null;
+    }
+
+    const member = room.members.find((item) => item.id === memberId);
+
+    if (!member) {
+      return null;
+    }
+
+    const message = room.messages.find((item) => item.id === messageId);
+
+    if (!message) {
+      throw new Error("Message not found.");
+    }
+
+    const existingReactionIndex = message.reactions.findIndex(
+      (reaction) => reaction.memberId === memberId && reaction.emoji === emoji
+    );
+
+    if (existingReactionIndex >= 0) {
+      message.reactions.splice(existingReactionIndex, 1);
+      return message;
+    }
+
+    message.reactions = message.reactions.filter((reaction) => reaction.memberId !== memberId);
+    message.reactions.push({
+      memberId,
+      emoji
+    });
+
     return message;
   }
 
@@ -195,6 +247,25 @@ export class RoomService {
         senderName: message.senderName,
         senderSlot: message.senderSlot,
         text: message.text,
+        replyTo: message.replyToMessageId
+          ? (() => {
+              const replyTarget = room.messages.find((item) => item.id === message.replyToMessageId);
+
+              if (!replyTarget) {
+                return null;
+              }
+
+              return {
+                id: replyTarget.id,
+                senderName: replyTarget.senderName,
+                text: replyTarget.text
+              };
+            })()
+          : null,
+        reactions: message.reactions.map((reaction) => ({
+          memberId: reaction.memberId,
+          emoji: reaction.emoji
+        })),
         createdAt: message.createdAt.toISOString()
       }))
     };
